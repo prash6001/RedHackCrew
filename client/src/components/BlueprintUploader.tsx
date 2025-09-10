@@ -38,7 +38,10 @@ async function sendToGemini({
     }
   );
   const result = await response.json();
-  console.log("Gemini API response:", result);
+  const geminiText =
+    result?.candidates?.[0]?.content?.parts?.[0]?.text ||
+    "No Gemini response text found.";
+  console.log("Gemini API response text:", geminiText);
   return result;
 }
 import React, { useCallback } from "react";
@@ -47,11 +50,13 @@ import { Upload, FileImage, X, CheckCircle } from "lucide-react";
 interface BlueprintUploaderProps {
   blueprint: File | null;
   onBlueprintChange: (file: File | null) => void;
+  onGeminiResponse?: (response: any) => void;
 }
 
 const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
   blueprint,
   onBlueprintChange,
+  onGeminiResponse,
 }) => {
   const allowedTypes = ["image/png", "image/jpeg", "application/pdf"];
 
@@ -86,18 +91,21 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
           }
           console.log("Using access token:", accessToken);
           const promptText =
-            "Identify the given blueprint and give me as many details as possible, preferably about Total Area, Built-up Area (Proposed), Amenity Space , Refuge Area , Balcony Area and Parking Area"; // Replace or pass as prop
+            "I am a construction equipment expert specializing in Hilti tools and equipment. I need to analyze a blueprint to recommend the most suitable Hilti tools for a job site"; // Replace or pass as prop
           const mimeType = file.type;
-          await sendToGemini({
+          const result = await sendToGemini({
             accessToken,
             promptText,
             base64Data: pureBase64,
             mimeType,
           });
+          if (onGeminiResponse) {
+            onGeminiResponse(result);
+          }
         }
       }
     },
-    [onBlueprintChange, allowedTypes]
+    [onBlueprintChange, allowedTypes, onGeminiResponse]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -122,14 +130,17 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
         }
         console.log("Using access token:", accessToken);
         const promptText =
-          "Identify the given blueprint and give me as many details as possible, preferably about Total Area, Built-up Area (Proposed), Amenity Space , Refuge Area , Balcony Area and Parking Area "; // Replace or pass as prop
+          "I am a construction equipment expert specializing in Hilti tools and equipment. I need to analyze a blueprint to recommend the most suitable Hilti tools for a job site"; // Replace or pass as prop
         const mimeType = file.type;
-        await sendToGemini({
+        const result = await sendToGemini({
           accessToken,
           promptText,
           base64Data: pureBase64,
           mimeType,
         });
+        if (onGeminiResponse) {
+          onGeminiResponse(result);
+        }
       }
     }
   };
