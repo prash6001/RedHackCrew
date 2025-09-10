@@ -100,7 +100,8 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
             mimeType,
           });
           if (onGeminiResponse) {
-            onGeminiResponse(result);
+            onGeminiResponse(result?.candidates?.[0]?.content?.parts?.[0]?.text ||
+    "No Gemini response text found.");
           }
         }
       }
@@ -139,7 +140,8 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
           mimeType,
         });
         if (onGeminiResponse) {
-          onGeminiResponse(result);
+          onGeminiResponse(result?.candidates?.[0]?.content?.parts?.[0]?.text ||
+    "No Gemini response text found.");
         }
       }
     }
