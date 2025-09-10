@@ -14,6 +14,7 @@ const HomePage = () => {
     duration: '',
     budget: '',
     teamSize: '',
+    noOfFloors:'',
     complexity: 'medium',
     existingTools: ''
   });
@@ -123,13 +124,26 @@ const HomePage = () => {
                 </label>
                 <input
                   type="number"
+                  value={projectDetails.noOfFloors}
+                  onChange={(e) => setProjectDetails(prev => ({ ...prev, noOfFloors: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e30613] focus:border-[#e30613]"
+                  placeholder="8"
+                />
+              </div>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Number Of Floors
+                </label>
+                <input
+                  type="number"
                   value={projectDetails.teamSize}
                   onChange={(e) => setProjectDetails(prev => ({ ...prev, teamSize: e.target.value }))}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e30613] focus:border-[#e30613]"
                   placeholder="8"
                 />
               </div>
-            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
