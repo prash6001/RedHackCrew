@@ -77,7 +77,14 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
           const pureBase64 = base64.split(",")[1] || base64;
           onBlueprintChange(file);
           // Call Gemini API
-          const accessToken = "GEMINI_API_TOKEN"; // Replace with your token or pass as prop
+          const accessToken = import.meta.env.VITE_GEMINI_API_TOKEN;
+          if (!accessToken) {
+            console.error(
+              "Gemini API token is undefined. Please check your .env file and restart the dev server."
+            );
+            return;
+          }
+          console.log("Using access token:", accessToken);
           const promptText =
             "Identify the given blueprint and give me as many details as possible, preferably about Total Area, Built-up Area (Proposed), Amenity Space , Refuge Area , Balcony Area and Parking Area"; // Replace or pass as prop
           const mimeType = file.type;
@@ -106,7 +113,14 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
         const pureBase64 = base64.split(",")[1] || base64;
         onBlueprintChange(file);
         // Call Gemini API
-        const accessToken = "GEMINI_API_TOKEN"; // Replace with your token or pass as prop
+        const accessToken = import.meta.env.VITE_GEMINI_API_TOKEN;
+        if (!accessToken) {
+          console.error(
+            "Gemini API token is undefined. Please check your .env file and restart the dev server."
+          );
+          return;
+        }
+        console.log("Using access token:", accessToken);
         const promptText =
           "Identify the given blueprint and give me as many details as possible, preferably about Total Area, Built-up Area (Proposed), Amenity Space , Refuge Area , Balcony Area and Parking Area "; // Replace or pass as prop
         const mimeType = file.type;
