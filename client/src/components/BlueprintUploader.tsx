@@ -1,3 +1,46 @@
+// Gemini API request function
+async function sendToGemini({
+  accessToken,
+  promptText,
+  base64Data,
+  mimeType,
+}: {
+  accessToken: string;
+  promptText: string;
+  base64Data: string;
+  mimeType: string;
+}) {
+  const response = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+    {
+      method: "POST",
+      headers: {
+        "X-goog-api-key": `${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                inline_data: {
+                  mime_type: `${mimeType}`,
+                  data: `${base64Data}`,
+                },
+              },
+              {
+                text: `${promptText}`,
+              },
+            ],
+          },
+        ],
+      }),
+    }
+  );
+  const result = await response.json();
+  console.log("Gemini API response:", result);
+  return result;
+}
 import React, { useCallback } from "react";
 import { Upload, FileImage, X, CheckCircle } from "lucide-react";
 
@@ -32,8 +75,18 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
         if (allowedTypes.includes(file.type)) {
           const base64 = await fileToBase64(file);
           const pureBase64 = base64.split(",")[1] || base64;
-          console.log("Base64 value:", pureBase64);
           onBlueprintChange(file);
+          // Call Gemini API
+          const accessToken = "GEMINI_API_TOKEN"; // Replace with your token or pass as prop
+          const promptText =
+            "Identify the given blueprint and give me as many details as possible, preferably about Total Area, Built-up Area (Proposed), Amenity Space , Refuge Area , Balcony Area and Parking Area"; // Replace or pass as prop
+          const mimeType = file.type;
+          await sendToGemini({
+            accessToken,
+            promptText,
+            base64Data: pureBase64,
+            mimeType,
+          });
         }
       }
     },
@@ -51,8 +104,18 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
       if (allowedTypes.includes(file.type)) {
         const base64 = await fileToBase64(file);
         const pureBase64 = base64.split(",")[1] || base64;
-        console.log("Base64 value:", pureBase64);
         onBlueprintChange(file);
+        // Call Gemini API
+        const accessToken = "GEMINI_API_TOKEN"; // Replace with your token or pass as prop
+        const promptText =
+          "Identify the given blueprint and give me as many details as possible, preferably about Total Area, Built-up Area (Proposed), Amenity Space , Refuge Area , Balcony Area and Parking Area "; // Replace or pass as prop
+        const mimeType = file.type;
+        await sendToGemini({
+          accessToken,
+          promptText,
+          base64Data: pureBase64,
+          mimeType,
+        });
       }
     }
   };
