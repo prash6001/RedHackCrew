@@ -101,14 +101,14 @@ const ScopeOfWorkSelector: React.FC<ScopeOfWorkSelectorProps> = ({
                 </div>
                 <p className="text-sm text-gray-600 mb-2">{scope.description}</p>
                 <div className="flex flex-wrap gap-1">
-                  {scope.tools.map((tool) => (
+                  {/* {scope.tools.map((tool) => (
                     <span
                       key={tool}
                       className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded"
                     >
                       {tool}
                     </span>
-                  ))}
+                  ))} */}
                 </div>
               </div>
             </div>
