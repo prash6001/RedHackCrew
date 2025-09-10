@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { Upload, FileImage, X, CheckCircle } from 'lucide-react';
+import React, { useCallback } from "react";
+import { Upload, FileImage, X, CheckCircle } from "lucide-react";
 
 interface BlueprintUploaderProps {
   blueprint: File | null;
@@ -8,27 +8,52 @@ interface BlueprintUploaderProps {
 
 const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
   blueprint,
-  onBlueprintChange
+  onBlueprintChange,
 }) => {
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      const file = files[0];
-      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
-        onBlueprintChange(file);
+  const allowedTypes = ["image/png", "image/jpeg", "application/pdf"];
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve(reader.result as string);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        const file = files[0];
+        if (allowedTypes.includes(file.type)) {
+          const base64 = await fileToBase64(file);
+          const pureBase64 = base64.split(",")[1] || base64;
+          console.log("Base64 value:", pureBase64);
+          onBlueprintChange(file);
+        }
       }
-    }
-  }, [onBlueprintChange]);
+    },
+    [onBlueprintChange, allowedTypes]
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   }, []);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      onBlueprintChange(files[0]);
+      const file = files[0];
+      if (allowedTypes.includes(file.type)) {
+        const base64 = await fileToBase64(file);
+        const pureBase64 = base64.split(",")[1] || base64;
+        console.log("Base64 value:", pureBase64);
+        onBlueprintChange(file);
+      }
     }
   };
 
@@ -37,11 +62,11 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
   };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
   return (
@@ -49,7 +74,7 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
       <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">
         Project Blueprint (Optional)
       </h3>
-      
+
       {!blueprint ? (
         <div
           onDrop={handleDrop}
@@ -58,7 +83,7 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
         >
           <input
             type="file"
-            accept="image/*,.pdf"
+            accept="image/png,image/jpeg,application/pdf"
             onChange={handleFileSelect}
             className="hidden"
             id="blueprint-upload"
@@ -107,7 +132,7 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
               </button>
             </div>
           </div>
-          
+
           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
             <div className="flex items-start space-x-2">
               <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -118,21 +143,24 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
                   AI Blueprint Analysis Enabled
                 </p>
                 <p className="text-xs text-blue-700 mt-1">
-                  Our AI will analyze your blueprint to automatically determine scope of work, 
-                  project complexity, and recommend optimal tools for your specific requirements.
+                  Our AI will analyze your blueprint to automatically determine
+                  scope of work, project complexity, and recommend optimal tools
+                  for your specific requirements.
                 </p>
               </div>
             </div>
           </div>
         </div>
       )}
-      
+
       {blueprint && (
         <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
           <p className="font-medium mb-1">What happens next:</p>
           <ul className="space-y-1 text-xs">
             <li>• AI analyzes blueprint dimensions and structural elements</li>
-            <li>• Automatically identifies required work types and complexity</li>
+            <li>
+              • Automatically identifies required work types and complexity
+            </li>
             <li>• Calculates optimal tool quantities based on project scale</li>
             <li>• Generates customized fleet recommendations</li>
           </ul>
