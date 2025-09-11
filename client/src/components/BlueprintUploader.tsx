@@ -44,7 +44,7 @@ async function sendToGemini({
   console.log("Gemini API response text:", geminiText);
   return result;
 }
-import React, { useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import { Upload, FileImage, X, CheckCircle } from "lucide-react";
 
 interface BlueprintUploaderProps {
@@ -58,6 +58,7 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
   onBlueprintChange,
   onGeminiResponse,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const allowedTypes = ["image/png", "image/jpeg", "application/pdf"];
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -177,6 +178,7 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
             onChange={handleFileSelect}
             className="hidden"
             id="blueprint-upload"
+            ref={fileInputRef}
           />
           <label htmlFor="blueprint-upload" className="cursor-pointer">
             <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -190,8 +192,9 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
               Supports: JPG, PNG, PDF (Max 10MB)
             </p>
             <button
-              type="button"
+              type="button" 
               className="mt-4 inline-flex items-center px-4 py-2 bg-[#e30613] text-white rounded-lg hover:bg-red-700 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="h-4 w-4 mr-2" />
               Choose File

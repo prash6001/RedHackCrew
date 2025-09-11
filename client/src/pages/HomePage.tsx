@@ -32,6 +32,7 @@ const HomePage = () => {
       const combined = {
         gemini: geminiResult,
         projectDetails,
+        selectedScopes,
       };
       console.log("--- Combined Gemini Result + Project Details ---");
       console.log(combined);
@@ -134,7 +135,7 @@ const HomePage = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Duration (weeks)
+                  Duration (months)
                 </label>
                 <input
                   type="number"
@@ -155,11 +156,11 @@ const HomePage = () => {
                 </label>
                 <input
                   type="number"
-                  value={projectDetails.noOfFloors}
+                  value={projectDetails.teamSize}
                   onChange={(e) =>
                     setProjectDetails((prev) => ({
                       ...prev,
-                      noOfFloors: e.target.value,
+                      teamSize: e.target.value,
                     }))
                   }
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e30613] focus:border-[#e30613]"
@@ -174,11 +175,11 @@ const HomePage = () => {
               </label>
               <input
                 type="number"
-                value={projectDetails.teamSize}
+                value={projectDetails.noOfFloors}
                 onChange={(e) =>
                   setProjectDetails((prev) => ({
                     ...prev,
-                    teamSize: e.target.value,
+                    noOfFloors: e.target.value,
                   }))
                 }
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e30613] focus:border-[#e30613]"
