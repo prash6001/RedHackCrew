@@ -237,7 +237,7 @@ app.post('/api/analyze', upload.single('blueprint'), async (req, res) => {
     const totalOwnershipCost = totalRetailPrice + maintenanceCosts + adminOverhead + theftRisk;
     
     // Moderately inflated retail price for realistic comparison (includes basic maintenance/ownership costs)
-    const moderateInflationRate = 1.2; // 20% markup to account for basic ownership costs
+    const moderateInflationRate = 1.6; // 20% markup to account for basic ownership costs
     const inflatedRetailPrice = totalRetailPrice * moderateInflationRate;
     const moderateSavings = inflatedRetailPrice - totalToolValue;
     const moderateSavingsPercentage = inflatedRetailPrice > 0 ? (moderateSavings / inflatedRetailPrice) * 100 : 0;
