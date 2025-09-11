@@ -113,11 +113,11 @@ const HomePage = () => {
         <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6 mb-12">
           <div className="flex items-center text-green-600">
             <CheckCircle className="h-5 w-5 mr-2" />
-            <span className="font-medium">Up to 40% Cost Savings</span>
+            <span className="font-medium">Cost Savings</span>
           </div>
           <div className="flex items-center text-blue-600">
             <TrendingUp className="h-5 w-5 mr-2" />
-            <span className="font-medium">25% Productivity Increase</span>
+            <span className="font-medium">Productivity Increase</span>
           </div>
           <div className="flex items-center text-purple-600">
             <Shield className="h-5 w-5 mr-2" />
@@ -375,7 +375,7 @@ const HomePage = () => {
             Cost Optimization
           </h3>
           <p className="text-gray-600">
-            Fleet contracts reduce tool costs by up to 40% compared to
+            Fleet contracts reduce tool costs compared to
             individual purchases, with predictable monthly payments.
           </p>
         </div>
@@ -389,7 +389,7 @@ const HomePage = () => {
           </h3>
           <p className="text-gray-600">
             Right-sized fleets ensure optimal tool availability, reducing
-            downtime and increasing project efficiency by 25%.
+            downtime and increasing project efficiency.
           </p>
         </div>
 

@@ -14,7 +14,7 @@ const ProjectAnalysis = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { selectedScopes, projectDetails, blueprint, geminiResult } = location.state || {};
+  const { selectedScopes, scopeDetails, projectDetails, blueprint, geminiResult } = location.state || {};
 
   // Helper function to map old project types to new API format
   const mapProjectType = (oldType: string): ProjectFormData['projectType'] => {
@@ -76,7 +76,9 @@ const ProjectAnalysis = () => {
           // Include number of floors if provided
           noOfFloors: projectDetails.noOfFloors ? parseInt(projectDetails.noOfFloors) : undefined,
           // Include manual scope selection if provided
-          selectedScopes: selectedScopes && selectedScopes.length > 0 ? selectedScopes : undefined
+          selectedScopes: selectedScopes && selectedScopes.length > 0 ? selectedScopes : undefined,
+          // Include scope details (descriptions) if provided
+          scopeDetails: scopeDetails && scopeDetails.length > 0 ? scopeDetails : undefined
         };
 
         console.log('🔍 Sending project data to server:', projectData);

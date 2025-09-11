@@ -86,8 +86,36 @@ const getRelevantProducts = (projectData: ProjectData): any[] => {
 
   let relevantCategories = [...(categoryMap[projectType] || categoryMap['commercial'])];
   
-  // BLUEPRINT ANALYSIS: Expand categories based on blueprint content
-  if (projectData.blueprint && typeof projectData.blueprint === 'string') {
+  // MANUAL SCOPE SELECTION: Filter to only selected scope categories if provided
+  if (projectData.selectedScopes && projectData.selectedScopes.length > 0) {
+    console.log('🎯 Filtering product catalog to selected scopes only...');
+    
+    // Map selected scope IDs to tool categories
+    const scopeToCategoryMap: Record<string, string[]> = {
+      'heavy-drilling': ['Rotary hammers', 'Demolition hammers', 'Demolition', 'Heavy drilling'],
+      'diamond-coring': ['Diamond coring', 'Core drilling', 'Diamond tools'],
+      'concrete-cutting': ['Cut-off saws', 'Concrete saws', 'Cutting', 'Diamond cutting'],
+      'indoor-cutting': ['Angle grinders', 'Cordless saws', 'Circular saws', 'Grinders'],
+      'layout-leveling': ['Laser levels', 'Measuring tools', 'Layout tools', 'Distance meters'],
+      'fastening': ['Fastening systems', 'Direct fastening', 'Nail guns', 'Fastening'],
+      'demolition': ['Demolition hammers', 'Demolition', 'Breaking tools']
+    };
+    
+    // Only include categories for selected scopes
+    const scopeCategories: string[] = [];
+    projectData.selectedScopes.forEach(scopeId => {
+      const categories = scopeToCategoryMap[scopeId] || [];
+      scopeCategories.push(...categories);
+      console.log(`📋 Scope "${scopeId}" mapped to categories: ${categories.join(', ')}`);
+    });
+    
+    // Replace the project-type categories with scope-specific categories
+    relevantCategories = [...new Set(scopeCategories)];
+    console.log(`🔍 Catalog restricted to ${relevantCategories.length} scope-specific categories: ${relevantCategories.join(', ')}`);
+  }
+  
+  // BLUEPRINT ANALYSIS: Expand categories based on blueprint content (only if no manual scope selection)
+  else if (projectData.blueprint && typeof projectData.blueprint === 'string') {
     console.log('🎯 Expanding product catalog based on blueprint analysis...');
     const blueprintText = projectData.blueprint.toLowerCase();
     
@@ -185,6 +213,9 @@ You are a senior Hilti Fleet Management consultant with deep expertise in constr
 - **Project Complexity**: ${projectData.projectComplexity}
 ${projectData.noOfFloors ? `- **Number of Floors**: ${projectData.noOfFloors}` : ''}
 ${projectData.selectedScopes && projectData.selectedScopes.length > 0 ? `- **Manual Scope Selection**: ${projectData.selectedScopes.join(', ')}` : ''}
+${projectData.scopeDetails && projectData.scopeDetails.length > 0 ? 
+`- **Detailed Scope Requirements**:
+${projectData.scopeDetails.map(scope => `  • ${scope.id}: ${scope.description}`).join('\n')}` : ''}
 - **Existing Tools & Equipment**: ${projectData.existingTools.join(', ') || 'None specified'}
 - **Special Requirements**: ${projectData.specialRequirements || 'None specified'}
 ${blueprintSection}
@@ -195,6 +226,9 @@ ${productCatalogSection}
 ## TASK:
 From the ACTUAL HILTI PRODUCTS listed above, select the most appropriate tools for this ${projectData.projectType} project with ${projectData.laborCount} workers over ${projectData.timeline} months.
 
+${projectData.selectedScopes && projectData.selectedScopes.length > 0 ? 
+`**CRITICAL SCOPE RESTRICTION**: Only recommend tools for the selected scopes: ${projectData.selectedScopes.join(', ')}. Do NOT recommend tools for any other categories or scopes not explicitly selected by the user.` : ''}
+
 ${projectData.blueprint && typeof projectData.blueprint === 'string' ? 
 `**CRITICAL BLUEPRINT REQUIREMENTS**: 
 1. ANALYZE the blueprint requirements carefully - this is the most important factor
@@ -204,11 +238,30 @@ ${projectData.blueprint && typeof projectData.blueprint === 'string' ?
 5. REFERENCE blueprint requirements in your justifications
 
 The AI has analyzed actual project blueprints and identified specific technical requirements. Your tool selection MUST address these specific needs.` : 
+projectData.scopeDetails && projectData.scopeDetails.length > 0 ?
+`**CRITICAL SCOPE REQUIREMENTS**: 
+1. ANALYZE the detailed scope descriptions provided by the user - these are specific project requirements
+2. SELECT tools that directly address each scope requirement described
+3. PRIORITIZE tools that solve the specific challenges mentioned in scope details
+4. ENSURE each scope requirement is addressed with appropriate tools
+5. REFERENCE specific scope requirements in your justifications
+
+The user has provided detailed descriptions of their specific project needs. Your tool selection MUST address these user-defined requirements.` :
 'Focus on selecting tools that best match the project type, complexity, and requirements.'}
 
 ## SELECTION CRITERIA (in order of importance):
-${projectData.blueprint && typeof projectData.blueprint === 'string' ? 
+${projectData.selectedScopes && projectData.selectedScopes.length > 0 ?
+`1. **Scope Restriction** (ABSOLUTE PRIORITY) - ONLY recommend tools for selected scopes: ${projectData.selectedScopes.join(', ')}
+${projectData.blueprint && typeof projectData.blueprint === 'string' ? '2. **Blueprint Requirements** - Address needs identified in blueprint analysis' : projectData.scopeDetails && projectData.scopeDetails.length > 0 ? '2. **Scope Requirements** - Address detailed user scope requirements' : '2. **Project Match** - Tools suitable for the project'}
+${projectData.blueprint && typeof projectData.blueprint === 'string' || projectData.scopeDetails && projectData.scopeDetails.length > 0 ? '3. **Team Size** - Appropriate for ' + projectData.laborCount + ' workers' : '3. **Team Size** - Appropriate for ' + projectData.laborCount + ' workers'}
+${projectData.blueprint && typeof projectData.blueprint === 'string' || projectData.scopeDetails && projectData.scopeDetails.length > 0 ? '4. **Timeline** - Efficient for ' + projectData.timeline + ' month duration' : '4. **Timeline** - Efficient for ' + projectData.timeline + ' month duration'}` :
+projectData.blueprint && typeof projectData.blueprint === 'string' ? 
 `1. **Blueprint Requirements** (HIGHEST PRIORITY) - Address all needs identified in blueprint analysis
+2. **Project Type Match** - Tools suitable for ${projectData.projectType} projects
+3. **Team Size** - Appropriate for ${projectData.laborCount} workers
+4. **Timeline** - Efficient for ${projectData.timeline} month duration` :
+projectData.scopeDetails && projectData.scopeDetails.length > 0 ?
+`1. **Scope Requirements** (HIGHEST PRIORITY) - Address all user-defined scope requirements
 2. **Project Type Match** - Tools suitable for ${projectData.projectType} projects
 3. **Team Size** - Appropriate for ${projectData.laborCount} workers
 4. **Timeline** - Efficient for ${projectData.timeline} month duration` :
@@ -241,7 +294,10 @@ You MUST respond with ONLY a valid JSON object. No explanations, no text before 
       "justification": [
         ${projectData.blueprint && typeof projectData.blueprint === 'string' ? 
         `"string - how this tool addresses specific blueprint requirements",
-        "string - why blueprint analysis identified this as critical",` : ''}
+        "string - why blueprint analysis identified this as critical",` : 
+        projectData.scopeDetails && projectData.scopeDetails.length > 0 ?
+        `"string - how this tool addresses specific scope requirements from user descriptions",
+        "string - which scope requirement this tool solves",` : ''}
         "string - why this tool fits project requirements",
         "string - how it addresses project complexity", 
         "string - productivity benefit for team size",
@@ -272,7 +328,7 @@ You MUST respond with ONLY a valid JSON object. No explanations, no text before 
 - **Fastening Tools**: $65-145/month
 - **Core Drilling**: $250-450/month
 
-Generate 8-12 comprehensive tool recommendations. Stay within $${projectData.budget.toLocaleString()} budget for total Fleet contract.
+Generate ${projectData.selectedScopes && projectData.selectedScopes.length > 0 ? `6-10 comprehensive tool recommendations ONLY for the selected scopes: ${projectData.selectedScopes.join(', ')}` : '8-12 comprehensive tool recommendations'}. Stay within $${projectData.budget.toLocaleString()} budget for total Fleet contract.
 `;
 };
 
@@ -422,6 +478,13 @@ const generateEnhancedMockRecommendations = async (projectData: ProjectData): Pr
   
   if (projectData.selectedScopes && projectData.selectedScopes.length > 0) {
     console.log(`🎯 Manual scope selection: ${projectData.selectedScopes.join(', ')} (will influence tool selection)`);
+  }
+  
+  if (projectData.scopeDetails && projectData.scopeDetails.length > 0) {
+    console.log(`📝 Detailed scope descriptions provided for ${projectData.scopeDetails.length} scopes:`);
+    projectData.scopeDetails.forEach(scope => {
+      console.log(`  • ${scope.id}: ${scope.description.substring(0, 100)}${scope.description.length > 100 ? '...' : ''}`);
+    });
   }
   
   // Helper function to calculate correct total cost
@@ -625,37 +688,178 @@ const generateEnhancedMockRecommendations = async (projectData: ProjectData): Pr
     }
   }
   
-  // Handle manual scope selections if provided (without blueprint)
-  if (projectData.selectedScopes && projectData.selectedScopes.length > 0 && (!projectData.blueprint || typeof projectData.blueprint !== 'string')) {
-    console.log('🎯 Adjusting recommendations based on manual scope selections...');
+  // Handle manual scope selections and detailed descriptions if provided (without blueprint)
+  if (projectData.scopeDetails && projectData.scopeDetails.length > 0 && (!projectData.blueprint || typeof projectData.blueprint !== 'string')) {
+    console.log('🎯 Adjusting recommendations based on detailed scope descriptions...');
     
-    projectData.selectedScopes.forEach(scope => {
-      const scopeLower = scope.toLowerCase();
+    projectData.scopeDetails.forEach(scope => {
+      const scopeIdLower = scope.id.toLowerCase();
+      const scopeDescLower = scope.description.toLowerCase();
       
-      // Add tools based on selected scopes
-      if (scopeLower.includes('drilling') || scopeLower.includes('anchoring')) {
-        console.log(`📍 Scope "${scope}" indicates drilling needs - prioritizing drilling tools`);
-        // Increase quantities for existing drilling tools or add more
+      console.log(`🔍 Processing scope: "${scope.id}" with description: "${scope.description}"`);
+      
+      // Analyze both scope ID and description for tool requirements
+      const analysisText = `${scopeIdLower} ${scopeDescLower}`;
+      
+      // Add drilling tools if scope indicates drilling needs
+      if (analysisText.includes('drill') || analysisText.includes('hole') || 
+          analysisText.includes('anchor') || analysisText.includes('bore') ||
+          scopeIdLower.includes('drilling')) {
+        console.log(`📍 Scope "${scope.id}" indicates drilling needs from: "${scope.description}"`);
+        
+        // Add specialized drilling tool based on description
+        if (analysisText.includes('heavy') || analysisText.includes('large') || 
+            analysisText.includes('concrete') || analysisText.includes('demolition')) {
+          finalRecommendations.push({
+            name: "TE 70-ATC/AVR Rotary Hammer",
+            model: "TE 70-ATC/AVR", 
+            description: "Heavy-duty rotary hammer with active torque control for large concrete drilling",
+            quantity: Math.ceil(projectData.laborCount / 12),
+            monthlyCost: 220,
+            totalCost: calculateTotalCost(220, Math.ceil(projectData.laborCount / 12), projectData.timeline),
+            rentalDuration: projectData.timeline,
+            category: "Heavy Drilling",
+            productUrl: "https://www.hilti.com/c/CLS_POWER_TOOLS_7124/CLS_ROTARY_HAMMERS_7124/r70",
+            specifications: [
+              "2000W motor for maximum power",
+              "Active Torque Control (ATC)",
+              "SDS-max chuck system",
+              "Superior vibration control"
+            ],
+            justification: [
+              `User scope "${scope.id}": ${scope.description}`,
+              "Heavy-duty drilling requirements identified from scope description", 
+              "ATC technology prevents operator injury during extended drilling",
+              "Fleet service ensures consistent performance",
+              "Professional reliability for demanding applications"
+            ],
+            competitiveAdvantages: [
+              'Industry-leading ATC safety system',
+              'Superior power-to-weight ratio',
+              'Comprehensive Fleet service coverage'
+            ]
+          });
+        }
+        
+        // Update existing drilling tools with scope justification
         const drillingTools = finalRecommendations.filter(rec => 
           rec.category.toLowerCase().includes('drilling') || 
           rec.name.toLowerCase().includes('drill') ||
           rec.name.toLowerCase().includes('hammer')
         );
         drillingTools.forEach(tool => {
-          tool.justification.unshift(`Manual scope selection identified ${scope} requirements`);
+          tool.justification.unshift(`User scope "${scope.id}": ${scope.description.substring(0, 80)}${scope.description.length > 80 ? '...' : ''}`);
         });
       }
       
-      if (scopeLower.includes('cutting') || scopeLower.includes('sawing')) {
-        console.log(`✂️ Scope "${scope}" indicates cutting needs - prioritizing cutting tools`);
-        // Similar logic for cutting tools
+      // Add cutting tools if scope indicates cutting needs  
+      if (analysisText.includes('cut') || analysisText.includes('saw') || 
+          analysisText.includes('slab') || analysisText.includes('opening') ||
+          scopeIdLower.includes('cutting')) {
+        console.log(`✂️ Scope "${scope.id}" indicates cutting needs from: "${scope.description}"`);
+        
         const cuttingTools = finalRecommendations.filter(rec => 
           rec.category.toLowerCase().includes('cutting') || 
           rec.name.toLowerCase().includes('saw') ||
           rec.name.toLowerCase().includes('cut')
         );
         cuttingTools.forEach(tool => {
-          tool.justification.unshift(`Manual scope selection identified ${scope} requirements`);
+          tool.justification.unshift(`User scope "${scope.id}": ${scope.description.substring(0, 80)}${scope.description.length > 80 ? '...' : ''}`);
+        });
+      }
+      
+      // Add measuring tools if scope indicates layout/measuring needs
+      if (analysisText.includes('level') || analysisText.includes('measure') || 
+          analysisText.includes('layout') || analysisText.includes('align') ||
+          scopeIdLower.includes('layout') || scopeIdLower.includes('leveling')) {
+        console.log(`📏 Scope "${scope.id}" indicates precision work from: "${scope.description}"`);
+        
+        const measuringTools = finalRecommendations.filter(rec => 
+          rec.category.toLowerCase().includes('layout') || 
+          rec.name.toLowerCase().includes('laser') ||
+          rec.name.toLowerCase().includes('level')
+        );
+        measuringTools.forEach(tool => {
+          if (measuringTools.length > 0) {
+            tool.quantity += 1; // Add extra precision tool
+            tool.totalCost = calculateTotalCost(tool.monthlyCost / tool.quantity, tool.quantity, projectData.timeline);
+          }
+          tool.justification.unshift(`User scope "${scope.id}": ${scope.description.substring(0, 80)}${scope.description.length > 80 ? '...' : ''}`);
+        });
+      }
+      
+      // Add safety/dust management tools if mentioned
+      if (analysisText.includes('dust') || analysisText.includes('safety') || 
+          analysisText.includes('indoor') || analysisText.includes('clean')) {
+        console.log(`💨 Scope "${scope.id}" indicates dust/safety requirements from: "${scope.description}"`);
+        
+        // Add dust management system
+        const hasDustTool = finalRecommendations.some(rec => 
+          rec.name.toLowerCase().includes('vacuum') || 
+          rec.category.toLowerCase().includes('dust')
+        );
+        
+        if (!hasDustTool) {
+          finalRecommendations.push({
+            name: "VC 40-U Vacuum Cleaner",
+            model: "VC 40-U",
+            description: "Professional dust extraction system for clean working environments",
+            quantity: Math.ceil(projectData.laborCount / 20),
+            monthlyCost: 120,
+            totalCost: calculateTotalCost(120, Math.ceil(projectData.laborCount / 20), projectData.timeline),
+            rentalDuration: projectData.timeline,
+            category: "Dust Management",
+            productUrl: "https://www.hilti.com/c/CLS_MEASURING_SYSTEMS_7125/CLS_DUST_MANAGEMENT_7125/r40u",
+            specifications: [
+              "40L capacity for extended operation",
+              "HEPA filtration system",
+              "Auto-start functionality",
+              "Compact design for job sites"
+            ],
+            justification: [
+              `User scope "${scope.id}": ${scope.description}`,
+              "Dust management requirements identified from scope description",
+              "HEPA filtration ensures clean work environment",
+              "Auto-start saves time and improves productivity",
+              "Professional dust extraction prevents health issues"
+            ],
+            competitiveAdvantages: [
+              'HEPA-grade filtration technology',
+              'Professional-grade durability',
+              'Fleet service maintenance included'
+            ]
+          });
+        }
+      }
+    });
+  } else if (projectData.selectedScopes && projectData.selectedScopes.length > 0 && (!projectData.blueprint || typeof projectData.blueprint !== 'string')) {
+    // Fallback: Handle basic scope selections without detailed descriptions
+    console.log('🎯 Adjusting recommendations based on basic scope selections...');
+    
+    projectData.selectedScopes.forEach(scope => {
+      const scopeLower = scope.toLowerCase();
+      
+      if (scopeLower.includes('drilling') || scopeLower.includes('anchoring')) {
+        console.log(`📍 Scope "${scope}" indicates drilling needs - prioritizing drilling tools`);
+        const drillingTools = finalRecommendations.filter(rec => 
+          rec.category.toLowerCase().includes('drilling') || 
+          rec.name.toLowerCase().includes('drill') ||
+          rec.name.toLowerCase().includes('hammer')
+        );
+        drillingTools.forEach(tool => {
+          tool.justification.unshift(`Manual scope selection: ${scope}`);
+        });
+      }
+      
+      if (scopeLower.includes('cutting') || scopeLower.includes('sawing')) {
+        console.log(`✂️ Scope "${scope}" indicates cutting needs - prioritizing cutting tools`);
+        const cuttingTools = finalRecommendations.filter(rec => 
+          rec.category.toLowerCase().includes('cutting') || 
+          rec.name.toLowerCase().includes('saw') ||
+          rec.name.toLowerCase().includes('cut')
+        );
+        cuttingTools.forEach(tool => {
+          tool.justification.unshift(`Manual scope selection: ${scope}`);
         });
       }
       
@@ -667,7 +871,7 @@ const generateEnhancedMockRecommendations = async (projectData: ProjectData): Pr
           rec.name.toLowerCase().includes('level')
         );
         measuringTools.forEach(tool => {
-          tool.justification.unshift(`Manual scope selection identified ${scope} requirements`);
+          tool.justification.unshift(`Manual scope selection: ${scope}`);
         });
       }
     });
@@ -715,7 +919,7 @@ async function enrichRecommendationsWithPricing(recommendations: ToolRecommendat
       });
     });
 
-    console.log('💰 Using ONLY real catalog pricing - no estimates or AI pricing allowed');
+    console.log('💰 Using real catalog standard pricing + LLM fleet pricing when needed');
 
     // Filter recommendations to ONLY include tools with real pricing data
     const enrichedRecommendations = recommendations
@@ -738,32 +942,42 @@ async function enrichRecommendationsWithPricing(recommendations: ToolRecommendat
           }
         }
         
-        // ONLY use tools with real pricing data - reject any without real pricing
+        // Check if we have valid catalog product with standard pricing
         if (!catalogProduct?.pricing || 
             !catalogProduct.pricing.standardPrice || 
-            catalogProduct.pricing.standardPrice <= 0 ||
-            !catalogProduct.pricing.fleetMonthlyPrice ||
-            catalogProduct.pricing.fleetMonthlyPrice <= 0) {
+            catalogProduct.pricing.standardPrice <= 0) {
           
-          console.warn(`❌ REJECTED ${rec.name} - no real pricing data in catalog`);
-          return null; // Reject tools without real pricing
+          console.warn(`❌ REJECTED ${rec.name} - no standard pricing data in catalog`);
+          return null; // Reject tools without standard pricing
         }
         
-        // Use ONLY real pricing from catalog - no calculations or estimates
+        // For fleet pricing, use catalog price if available, otherwise use LLM recommendation
+        const hasFleetPricing = catalogProduct.pricing.fleetMonthlyPrice && 
+                               catalogProduct.pricing.fleetMonthlyPrice > 0;
+        
+        if (!hasFleetPricing) {
+          console.log(`⚠️ ${rec.name} - using LLM fleet pricing (catalog has fleetMonthlyPrice: 0)`);
+        }
+        
+        // Use catalog pricing when available, fallback to LLM pricing for fleet rates
+        const fleetMonthlyPerUnit = hasFleetPricing ? 
+          catalogProduct.pricing.fleetMonthlyPrice : 
+          (rec.monthlyCost / rec.quantity); // Use LLM pricing per unit when catalog has no fleet pricing
+        
         const realPricing = {
           standardPrice: catalogProduct.pricing.standardPrice,
-          fleetMonthlyPrice: catalogProduct.pricing.fleetMonthlyPrice,
+          fleetMonthlyPrice: fleetMonthlyPerUnit,
           fleetUpfrontCost: catalogProduct.pricing.fleetUpfrontCost || 0,
           currency: catalogProduct.pricing.currency || 'USD',
           lastUpdated: catalogProduct.pricing.lastUpdated,
-          priceSource: 'catalog_updated' as const
+          priceSource: hasFleetPricing ? 'catalog_updated' as const : 'llm_enhanced' as const
         };
         
         // Calculate total monthly cost: fleet monthly price per unit × quantity
-        const totalMonthlyCost = realPricing.fleetMonthlyPrice * rec.quantity;
+        const totalMonthlyCost = fleetMonthlyPerUnit * rec.quantity;
         const totalFleetCost = totalMonthlyCost * rec.rentalDuration;
         
-        console.log(`✅ ${rec.name}: $${realPricing.fleetMonthlyPrice}/unit/month × ${rec.quantity} units = $${totalMonthlyCost}/month`);
+        console.log(`✅ ${rec.name}: $${realPricing.fleetMonthlyPrice}/unit/month × ${rec.quantity} units = $${totalMonthlyCost}/month (${realPricing.priceSource})`);
         
         return {
           ...rec,
@@ -775,7 +989,9 @@ async function enrichRecommendationsWithPricing(recommendations: ToolRecommendat
       .filter(rec => rec !== null); // Remove rejected tools
     
     const successCount = enrichedRecommendations.length;
-    console.log(`✅ ${successCount} tools with real pricing retained, ${recommendations.length - successCount} rejected`);
+    const catalogPricedCount = enrichedRecommendations.filter(r => r.pricing?.priceSource === 'catalog_updated').length;
+    const llmPricedCount = enrichedRecommendations.filter(r => r.pricing?.priceSource === 'llm_enhanced').length;
+    console.log(`✅ ${successCount} tools retained: ${catalogPricedCount} with catalog fleet pricing, ${llmPricedCount} with LLM fleet pricing. ${recommendations.length - successCount} rejected for missing standard pricing.`);
     
     return enrichedRecommendations;
     

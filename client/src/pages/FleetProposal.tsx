@@ -10,23 +10,34 @@ const FleetProposal = () => {
   // Use analysisData from server if available, otherwise fallback to recommendations
   const displayData = analysisData || recommendations || {};
   const totalFleetValue = displayData.financial?.totalInvestment || 0;
-
+  
+  // Get the current project duration in months
+  const currentDuration = parseInt(projectDetails?.duration || displayData.project?.timeline || '24');
+  
+  // Calculate dynamic contract terms based on project duration
+  const leftDuration = Math.max(12, currentDuration - 12); // Minimum 12 months
+  const centerDuration = currentDuration;
+  const rightDuration = currentDuration + 12;
+  
+  // Base monthly rate (center option gets standard pricing)
+  const baseMonthlyRate = Math.round(totalFleetValue / centerDuration) || 0;
+  
   const contractTerms = [
     {
-      duration: '12 months',
-      monthlyRate: Math.round(totalFleetValue / 12) || 0,
+      duration: `${leftDuration} months`,
+      monthlyRate: Math.round(baseMonthlyRate * 1.2), // 20% higher price
       setupFee: 500,
       savings: 'Standard'
     },
     {
-      duration: '24 months',
-      monthlyRate: Math.round((totalFleetValue * 0.85) / 24) || 0,
+      duration: `${centerDuration} months`,
+      monthlyRate: baseMonthlyRate, // Base price
       setupFee: 250,
-      savings: 'Enhanced'
+      savings: 'Recommended'
     },
     {
-      duration: '36 months',
-      monthlyRate: Math.round((totalFleetValue * 0.75) / 36) || 0,
+      duration: `${rightDuration} months`,
+      monthlyRate: Math.round(baseMonthlyRate * 0.8), // 20% discount
       setupFee: 0,
       savings: 'Maximum'
     }
@@ -119,7 +130,7 @@ const FleetProposal = () => {
             <div className="text-2xl font-bold text-purple-600">
               {projectDetails?.duration || displayData.project?.timeline || '12'}
             </div>
-            <div className="text-sm text-gray-600">Week Duration</div>
+            <div className="text-sm text-gray-600">Contract Duration (in months)</div>
           </div>
         </div>
       </div>
