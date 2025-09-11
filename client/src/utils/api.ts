@@ -14,6 +14,8 @@ export interface ProjectFormData {
   specialRequirements?: string;
   projectComplexity: 'low' | 'medium' | 'high';
   blueprint?: File | string; // Either file or Gemini analysis text
+  noOfFloors?: number; // Number of floors in the building
+  selectedScopes?: string[]; // Manual scope of work selection
 }
 
 export interface ToolRecommendation {

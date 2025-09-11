@@ -72,7 +72,11 @@ const ProjectAnalysis = () => {
           specialRequirements: projectDetails.specialRequirements || '',
           projectComplexity: (projectDetails.complexity as 'low' | 'medium' | 'high') || 'medium',
           // Send Gemini analysis text as blueprint if available, otherwise send file
-          blueprint: geminiResult || blueprint
+          blueprint: geminiResult || blueprint,
+          // Include number of floors if provided
+          noOfFloors: projectDetails.noOfFloors ? parseInt(projectDetails.noOfFloors) : undefined,
+          // Include manual scope selection if provided
+          selectedScopes: selectedScopes && selectedScopes.length > 0 ? selectedScopes : undefined
         };
 
         console.log('🔍 Sending project data to server:', projectData);
