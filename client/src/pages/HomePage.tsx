@@ -189,6 +189,7 @@ const HomePage = () => {
                 </label>
                 <input
                   type="number"
+                  min="0"
                   value={projectDetails.duration}
                   onChange={(e) =>
                     setProjectDetails((prev) => ({
@@ -206,6 +207,7 @@ const HomePage = () => {
                 </label>
                 <input
                   type="number"
+                  min="0"
                   value={projectDetails.teamSize}
                   onChange={(e) =>
                     setProjectDetails((prev) => ({
@@ -225,6 +227,7 @@ const HomePage = () => {
               </label>
               <input
                 type="number"
+                min="0"
                 value={projectDetails.noOfFloors}
                 onChange={(e) =>
                   setProjectDetails((prev) => ({
