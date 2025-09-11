@@ -82,7 +82,6 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
         if (allowedTypes.includes(file.type)) {
           const base64 = await fileToBase64(file);
           const pureBase64 = base64.split(",")[1] || base64;
-          console.log("Base64 value:", pureBase64);
           onBlueprintChange(file);
           
           // Try to call Gemini API if configured
@@ -183,7 +182,6 @@ RECOMMENDED TOOL CATEGORIES:
       if (allowedTypes.includes(file.type)) {
         const base64 = await fileToBase64(file);
         const pureBase64 = base64.split(",")[1] || base64;
-        console.log("Base64 value:", pureBase64);
         onBlueprintChange(file);
         
         // Try to call Gemini API if configured
