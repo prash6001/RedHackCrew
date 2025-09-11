@@ -12,6 +12,10 @@ export interface ProjectData {
   projectComplexity: 'low' | 'medium' | 'high';
   noOfFloors?: number; // Number of floors in the building
   selectedScopes?: string[]; // Manual scope of work selection
+  scopeDetails?: Array<{
+    id: string;
+    description: string;
+  }>; // Detailed scope descriptions from user input
 }
 
 export interface ToolRecommendation {
@@ -34,7 +38,7 @@ export interface ToolRecommendation {
     fleetMonthlyPrice: number;
     fleetUpfrontCost: number;
     currency: string;
-    priceSource: 'hilti_api' | 'estimated' | 'catalog_updated';
+    priceSource: 'hilti_api' | 'estimated' | 'catalog_updated' | 'llm_enhanced';
   } | null;
 }
 
