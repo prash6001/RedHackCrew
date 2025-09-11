@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, Zap, Weight, Settings, Package, Clock, DollarSign, CheckCircle } from 'lucide-react';
+import { ExternalLink, Settings, Package, Clock, DollarSign, CheckCircle } from 'lucide-react';
 
 interface Tool {
   id: string;
@@ -18,6 +18,14 @@ interface Tool {
   roi?: number;
   utilizationRate?: number;
   priority?: 'high' | 'medium' | 'standard';
+  // Real pricing from Hilti API
+  pricing?: {
+    standardPrice: number;
+    fleetMonthlyPrice: number;
+    fleetUpfrontCost: number;
+    currency: string;
+    priceSource: 'hilti_api' | 'estimated' | 'catalog_updated';
+  } | null;
 }
 
 interface ToolRecommendationsProps {
@@ -25,13 +33,29 @@ interface ToolRecommendationsProps {
 }
 
 const ToolRecommendations: React.FC<ToolRecommendationsProps> = ({ tools }) => {
-  const getDiscountPercentage = (totalCost: number, monthlyCost: number, duration: number) => {
-    const fleetTotalCost = monthlyCost * duration;
-    const retailPrice = totalCost;
-    if (retailPrice > 0) {
-      return Math.round(((retailPrice - fleetTotalCost) / retailPrice) * 100);
+  const getDiscountPercentage = (tool: Tool) => {
+    // Use real pricing data if available
+    if (tool.pricing && tool.pricing.standardPrice) {
+      const retailPrice = tool.pricing.standardPrice;
+      const fleetMonthlyPrice = tool.monthlyCost / tool.quantity; // Per unit monthly price
+      const fleetTotalPrice = fleetMonthlyPrice * tool.rentalDuration;
+      
+      if (retailPrice > 0) {
+        return Math.max(0, Math.round(((retailPrice - fleetTotalPrice) / retailPrice) * 100));
+      }
     }
+    
+    // Fallback calculation
     return 25; // Default discount percentage
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   return (
@@ -54,24 +78,36 @@ const ToolRecommendations: React.FC<ToolRecommendationsProps> = ({ tools }) => {
                     </div>
                   </div>
                   <div className="absolute top-2 right-2 bg-[#e30613] text-white px-2 py-1 rounded text-sm font-bold">
-                    -{getDiscountPercentage(tool.totalCost, tool.monthlyCost, tool.rentalDuration)}%
+                    -{getDiscountPercentage(tool)}%
                   </div>
                 </div>
                 
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-bold text-xl text-gray-900">{tool.name}</h3>
-                    <a
-                      href={tool.productUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#e30613] hover:text-red-700 transition-colors"
-                    >
-                      <ExternalLink className="h-5 w-5" />
-                    </a>
+                    {tool.productUrl && (
+                      <a
+                        href={tool.productUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#e30613] hover:text-red-700 transition-colors flex items-center space-x-1"
+                        title="View on Hilti.com"
+                      >
+                        <ExternalLink className="h-5 w-5" />
+                        <span className="text-sm font-medium">View Product</span>
+                      </a>
+                    )}
                   </div>
                   <p className="text-sm text-gray-600 mb-2">{tool.category}</p>
                   <p className="text-sm text-gray-700">{tool.description}</p>
+                  {tool.pricing && (
+                    <div className="mt-2 p-2 bg-blue-50 rounded text-xs">
+                      <span className="font-medium text-blue-800">
+                        {tool.pricing.priceSource === 'catalog_updated' ? '✅ Real Hilti Pricing' : 
+                         tool.pricing.priceSource === 'hilti_api' ? '✅ Live API Pricing' : '⚠️ Estimated Pricing'}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Specifications */}
@@ -111,16 +147,33 @@ const ToolRecommendations: React.FC<ToolRecommendationsProps> = ({ tools }) => {
                 <div className="bg-green-50 p-4 rounded-lg">
                   <div className="flex items-center mb-2">
                     <DollarSign className="h-5 w-5 text-green-600 mr-2" />
-                    <span className="text-sm font-medium text-green-800">Monthly Cost</span>
+                    <span className="text-sm font-medium text-green-800">Monthly Fleet Cost</span>
                   </div>
-                  <div className="text-2xl font-bold text-green-600">${(tool.monthlyCost * tool.quantity).toLocaleString()}</div>
-                  <div className="text-sm text-green-700">${tool.monthlyCost.toLocaleString()} per unit</div>
+                  <div className="text-2xl font-bold text-green-600">{formatCurrency(tool.monthlyCost * tool.quantity)}</div>
+                  <div className="text-sm text-green-700">{formatCurrency(tool.monthlyCost)} per unit</div>
+                  {tool.pricing && tool.pricing.standardPrice && (
+                    <div className="text-xs text-gray-600 mt-1">
+                      Retail: {formatCurrency(tool.pricing.standardPrice * tool.quantity)}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="bg-[#e30613] text-white p-4 rounded-lg">
-                  <div className="text-sm font-medium mb-1">Total Fleet Cost</div>
-                  <div className="text-3xl font-bold">${(tool.totalCost * tool.quantity).toLocaleString()}</div>
-                  <div className="text-sm opacity-90">Total fleet cost</div>
+                  <div className="text-sm font-medium mb-1">Total Fleet Investment</div>
+                  <div className="text-3xl font-bold">{formatCurrency(tool.totalCost)}</div>
+                  <div className="text-sm opacity-90">Over {tool.rentalDuration} months</div>
+                  {tool.pricing && tool.pricing.standardPrice && (
+                    <div className="text-xs opacity-75 mt-1">
+                      vs. {formatCurrency(tool.pricing.standardPrice * tool.quantity)} to purchase
+                    </div>
+                  )}
+                  {/* Show potential pricing issue warning */}
+                  {tool.pricing && tool.pricing.standardPrice && 
+                   (tool.totalCost / (tool.pricing.standardPrice * tool.quantity)) > 8 && (
+                    <div className="text-xs bg-yellow-600 bg-opacity-50 px-2 py-1 rounded mt-2">
+                      ⚠️ Check pricing calculation
+                    </div>
+                  )}
                 </div>
               </div>
               

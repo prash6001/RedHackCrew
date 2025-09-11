@@ -1,14 +1,63 @@
+// Gemini API request function
+async function sendToGemini({
+  accessToken,
+  promptText,
+  base64Data,
+  mimeType,
+}: {
+  accessToken: string;
+  promptText: string;
+  base64Data: string;
+  mimeType: string;
+}) {
+  const response = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+    {
+      method: "POST",
+      headers: {
+        "X-goog-api-key": `${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                inline_data: {
+                  mime_type: `${mimeType}`,
+                  data: `${base64Data}`,
+                },
+              },
+              {
+                text: `${promptText}`,
+              },
+            ],
+          },
+        ],
+      }),
+    }
+  );
+  const result = await response.json();
+  const geminiText =
+    result?.candidates?.[0]?.content?.parts?.[0]?.text ||
+    "No Gemini response text found.";
+  console.log("Gemini API response text:", geminiText);
+  return result;
+}
+
 import React, { useCallback } from "react";
 import { Upload, FileImage, X, CheckCircle } from "lucide-react";
 
 interface BlueprintUploaderProps {
   blueprint: File | null;
   onBlueprintChange: (file: File | null) => void;
+  onGeminiResponse?: (response: any) => void;
 }
 
 const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
   blueprint,
   onBlueprintChange,
+  onGeminiResponse,
 }) => {
   const allowedTypes = ["image/png", "image/jpeg", "application/pdf"];
 
@@ -34,10 +83,92 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
           const pureBase64 = base64.split(",")[1] || base64;
           console.log("Base64 value:", pureBase64);
           onBlueprintChange(file);
+          
+          // Try to call Gemini API if configured
+          const accessToken = import.meta.env.VITE_GEMINI_API_TOKEN;
+          if (!accessToken) {
+            console.warn("Gemini API token not configured. Blueprint uploaded without AI analysis.");
+            return;
+          }
+          
+          try {
+            console.log("Calling Gemini API for blueprint analysis...");
+            const promptText = import.meta.env.VITE_PROMPT_TEXT;
+            console.log("🔍 Prompt text from env:", promptText);
+            
+            if (!promptText) {
+              console.warn("VITE_PROMPT_TEXT not found, using fallback prompt");
+            }
+            
+            // Use enhanced directive prompt to force concrete analysis
+            const finalPrompt = promptText || `ANALYZE THIS BLUEPRINT AND EXTRACT SPECIFIC CONSTRUCTION REQUIREMENTS:
+
+You are a construction equipment expert analyzing a building blueprint. You MUST analyze the actual blueprint image and provide concrete, actionable information for tool selection.
+
+DO NOT ask questions. DO NOT request more information. ANALYZE WHAT YOU SEE IN THE BLUEPRINT.
+
+**REQUIRED ANALYSIS OUTPUT:**
+
+1. **STRUCTURAL ELEMENTS IDENTIFIED:**
+   - What materials are shown? (concrete, steel, masonry, wood, etc.)
+   - What structural systems are visible? (foundations, walls, beams, slabs, etc.)
+
+2. **CONSTRUCTION OPERATIONS REQUIRED:**
+   - Drilling needs: How many holes/anchors are specified? What sizes?
+   - Cutting requirements: Any openings, modifications, or demolition work?
+   - Fastening work: What attachment methods are shown?
+   - Measuring/layout: What precision work is required?
+
+3. **WORK ENVIRONMENT:**
+   - Indoor or outdoor work areas?
+   - Multi-story or single level?
+   - Access limitations or space constraints?
+   - Safety considerations?
+
+4. **SPECIFIC HILTI TOOL REQUIREMENTS:**
+   Based on what you see in the blueprint, identify specific tool needs:
+   - Heavy drilling (rotary hammers for concrete)
+   - Cutting tools (saws for openings)
+   - Measuring equipment (levels for layout)
+   - Safety equipment (dust management)
+   - Fastening tools (for connections)
+
+**CRITICAL:** Provide specific, concrete observations from the blueprint. Do not provide generic advice or ask for more information. Extract actionable construction requirements that can guide tool selection.
+
+**FORMAT YOUR RESPONSE AS:**
+BLUEPRINT ANALYSIS RESULTS:
+[Provide detailed analysis based on actual blueprint content]
+
+CONSTRUCTION REQUIREMENTS IDENTIFIED:
+- [Specific requirement 1 based on blueprint]
+- [Specific requirement 2 based on blueprint]
+- [etc.]
+
+RECOMMENDED TOOL CATEGORIES:
+- [Tool category 1] for [specific blueprint requirement]
+- [Tool category 2] for [specific blueprint requirement]
+- [etc.]`;
+            console.log("📝 Using enhanced directive prompt");
+            
+            const mimeType = file.type;
+            const result = await sendToGemini({
+              accessToken,
+              promptText: finalPrompt,
+              base64Data: pureBase64,
+              mimeType,
+            });
+            if (onGeminiResponse) {
+              onGeminiResponse(result?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "No Gemini response text found.");
+            }
+          } catch (error) {
+            console.error("Gemini API call failed:", error);
+            // Blueprint is still uploaded, just without AI analysis
+          }
         }
       }
     },
-    [onBlueprintChange, allowedTypes]
+    [onBlueprintChange, allowedTypes, onGeminiResponse]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -53,6 +184,88 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
         const pureBase64 = base64.split(",")[1] || base64;
         console.log("Base64 value:", pureBase64);
         onBlueprintChange(file);
+        
+        // Try to call Gemini API if configured
+        const accessToken = import.meta.env.VITE_GEMINI_API_TOKEN;
+        if (!accessToken) {
+          console.warn("Gemini API token not configured. Blueprint uploaded without AI analysis.");
+          return;
+        }
+        
+        try {
+          console.log("Calling Gemini API for blueprint analysis...");
+          const promptText = import.meta.env.VITE_PROMPT_TEXT;
+          console.log("🔍 Prompt text from env:", promptText);
+          
+          if (!promptText) {
+            console.warn("VITE_PROMPT_TEXT not found, using fallback prompt");
+          }
+          
+          // Use enhanced directive prompt to force concrete analysis
+          const finalPrompt = promptText || `ANALYZE THIS BLUEPRINT AND EXTRACT SPECIFIC CONSTRUCTION REQUIREMENTS:
+
+You are a construction equipment expert analyzing a building blueprint. You MUST analyze the actual blueprint image and provide concrete, actionable information for tool selection.
+
+DO NOT ask questions. DO NOT request more information. ANALYZE WHAT YOU SEE IN THE BLUEPRINT.
+
+**REQUIRED ANALYSIS OUTPUT:**
+
+1. **STRUCTURAL ELEMENTS IDENTIFIED:**
+   - What materials are shown? (concrete, steel, masonry, wood, etc.)
+   - What structural systems are visible? (foundations, walls, beams, slabs, etc.)
+
+2. **CONSTRUCTION OPERATIONS REQUIRED:**
+   - Drilling needs: How many holes/anchors are specified? What sizes?
+   - Cutting requirements: Any openings, modifications, or demolition work?
+   - Fastening work: What attachment methods are shown?
+   - Measuring/layout: What precision work is required?
+
+3. **WORK ENVIRONMENT:**
+   - Indoor or outdoor work areas?
+   - Multi-story or single level?
+   - Access limitations or space constraints?
+   - Safety considerations?
+
+4. **SPECIFIC HILTI TOOL REQUIREMENTS:**
+   Based on what you see in the blueprint, identify specific tool needs:
+   - Heavy drilling (rotary hammers for concrete)
+   - Cutting tools (saws for openings)
+   - Measuring equipment (levels for layout)
+   - Safety equipment (dust management)
+   - Fastening tools (for connections)
+
+**CRITICAL:** Provide specific, concrete observations from the blueprint. Do not provide generic advice or ask for more information. Extract actionable construction requirements that can guide tool selection.
+
+**FORMAT YOUR RESPONSE AS:**
+BLUEPRINT ANALYSIS RESULTS:
+[Provide detailed analysis based on actual blueprint content]
+
+CONSTRUCTION REQUIREMENTS IDENTIFIED:
+- [Specific requirement 1 based on blueprint]
+- [Specific requirement 2 based on blueprint]
+- [etc.]
+
+RECOMMENDED TOOL CATEGORIES:
+- [Tool category 1] for [specific blueprint requirement]
+- [Tool category 2] for [specific blueprint requirement]
+- [etc.]`;
+          console.log("📝 Using enhanced directive prompt");
+          
+          const mimeType = file.type;
+          const result = await sendToGemini({
+            accessToken,
+            promptText: finalPrompt,
+            base64Data: pureBase64,
+            mimeType,
+          });
+          if (onGeminiResponse) {
+            onGeminiResponse(result?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "No Gemini response text found.");
+          }
+        } catch (error) {
+          console.error("Gemini API call failed:", error);
+          // Blueprint is still uploaded, just without AI analysis
+        }
       }
     }
   };
@@ -88,7 +301,7 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
             className="hidden"
             id="blueprint-upload"
           />
-          <label htmlFor="blueprint-upload" className="cursor-pointer">
+          <label htmlFor="blueprint-upload" className="cursor-pointer block">
             <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h4 className="text-lg font-medium text-gray-900 mb-2">
               Upload Project Blueprint
@@ -99,13 +312,10 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
             <p className="text-sm text-gray-500">
               Supports: JPG, PNG, PDF (Max 10MB)
             </p>
-            <button
-              type="button"
-              className="mt-4 inline-flex items-center px-4 py-2 bg-[#e30613] text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
+            <div className="mt-4 inline-flex items-center px-4 py-2 bg-[#e30613] text-white rounded-lg hover:bg-red-700 transition-colors">
               <Upload className="h-4 w-4 mr-2" />
               Choose File
-            </button>
+            </div>
           </label>
         </div>
       ) : (

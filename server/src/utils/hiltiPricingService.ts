@@ -43,14 +43,23 @@ export interface PricingResult {
 class HiltiPricingService {
   private readonly apiUrl = 'https://cloudapis.hilti.com/dus/graphql/v1';
   private readonly fallbackApiUrl = 'https://www.hilti.com/api/pricing/v1';
-  private readonly headers = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    'Origin': 'https://www.hilti.com',
-    'Referer': 'https://www.hilti.com/',
-    'X-Requested-With': 'XMLHttpRequest'
-  };
+  
+  private getHeaders() {
+    // Use the working headers from Bruno configuration
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'apollographql-client-name': 'hdms-frontend',
+      'authorization': 'Basic ZTAwODAzZGYtMjY5YS00MDU0LTgxYTMtNDk1YjA0NTY0MGVkOjYyZmVmNDBkLWRiYjUtNDMyNS04ZDAwLTE2NTEyMzIxOWI1NA==',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Origin': 'https://www.hilti.com',
+      'Referer': 'https://www.hilti.com/'
+    };
+    
+    console.log('🔑 Using verified Hilti API authentication headers from Bruno configuration');
+    
+    return headers;
+  }
 
   private readonly graphqlQuery = `
     query StreetProductsPrices($filter: PricesFilterInput!, $localization: LocalizationInput!, $isFleetPriceEnabled: Boolean!, $isSubscriptionPriceEnabled: Boolean!) {
@@ -148,12 +157,13 @@ class HiltiPricingService {
           filter: {
             products: products.map(p => ({
               productId: p.productId.toString(),
-              quantity: p.quantity || 1
+              quantity: p.quantity || 10
             })),
             types: ['FLEET', 'STANDARD'],
             currency: 'USD',
             country: country
           },
+          skipFleetDetails: true,
           localization: {
             country: country,
             language: language
@@ -166,7 +176,7 @@ class HiltiPricingService {
 
       const response = await fetch(this.apiUrl, {
         method: 'POST',
-        headers: this.headers,
+        headers: this.getHeaders(),
         body: JSON.stringify(requestBody)
       });
 

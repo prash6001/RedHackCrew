@@ -1,5 +1,7 @@
-// Enhanced Recommendation Engine - Ported from FleetFlow-Hack
+// Enhanced Recommendation Engine - Rule-Based Implementation  
 import { ProjectData, ToolRecommendation, FleetContract } from '../types/ProjectData.js';
+import { readFileSync } from 'fs';
+import path from 'path';
 
 const hiltiTools = {
   drills: [
@@ -168,15 +170,151 @@ const hiltiTools = {
   ]
 };
 
-export const generateRecommendations = (projectData: ProjectData): ToolRecommendation[] => {
-  // Generating enhanced Fleet Management recommendations
+// Apply blueprint analysis to enhance tool recommendations
+const applyBlueprintEnhancements = (recommendations: ToolRecommendation[], projectData: ProjectData): ToolRecommendation[] => {
+  if (!projectData.blueprint || typeof projectData.blueprint !== 'string') {
+    return recommendations;
+  }
+
+  console.log('🎯 Applying blueprint-based enhancements to rule-based recommendations');
+  const blueprintText = projectData.blueprint.toLowerCase();
+  const enhancedRecommendations = [...recommendations];
+
+  // Add specialized tools based on blueprint analysis
+  const additionalTools: ToolRecommendation[] = [];
+
+  // Check for specific requirements mentioned in blueprint
+  if (blueprintText.includes('concrete') || blueprintText.includes('drilling') || blueprintText.includes('anchor')) {
+    console.log('🔧 Blueprint mentions concrete work - prioritizing heavy-duty drilling equipment');
+    
+    // Boost existing rotary hammer quantities
+    const rotaryHammerIndex = enhancedRecommendations.findIndex(rec => 
+      rec.name.toLowerCase().includes('rotary') || rec.name.toLowerCase().includes('hammer')
+    );
+    if (rotaryHammerIndex >= 0) {
+      enhancedRecommendations[rotaryHammerIndex].quantity += 1;
+      enhancedRecommendations[rotaryHammerIndex].justification.unshift(
+        'Blueprint analysis identified extensive concrete drilling requirements'
+      );
+      enhancedRecommendations[rotaryHammerIndex].totalCost = 
+        enhancedRecommendations[rotaryHammerIndex].monthlyCost * 
+        enhancedRecommendations[rotaryHammerIndex].quantity * 
+        enhancedRecommendations[rotaryHammerIndex].rentalDuration;
+    }
+  }
+
+  if (blueprintText.includes('cut') || blueprintText.includes('saw') || blueprintText.includes('slab')) {
+    console.log('✂️ Blueprint indicates cutting requirements - adding cutting tools');
+    
+    const cuttingTool: ToolRecommendation = {
+      name: 'DSH 700-X Hand-held Gas Saw',
+      model: 'DSH 700-X',
+      description: 'Powerful hand-held gas saw for cutting concrete, masonry, and metal as specified in blueprints',
+      quantity: 1,
+      rentalDuration: projectData.timeline,
+      monthlyCost: 280,
+      totalCost: 280 * projectData.timeline,
+      category: 'Cutting',
+      productUrl: 'https://www.hilti.com/c/CLS_POWER_TOOLS_7124/CLS_SAWS_CUTTERS_7124/CLS_HANDHELD_GAS_SAWS_7124/r7003',
+      specifications: ['70cc engine', '350mm cutting depth', 'X-Torq technology'],
+      justification: [
+        'Blueprint analysis identified cutting requirements for concrete/masonry',
+        'Specified in project drawings for structural modifications',
+        'Required for blueprint-specified openings and modifications'
+      ],
+      competitiveAdvantages: [
+        'X-Torq engine reduces emissions and fuel consumption',
+        'Professional-grade performance for blueprint specifications',
+        'Fleet service includes blade replacement and maintenance'
+      ]
+    };
+    additionalTools.push(cuttingTool);
+  }
+
+  if (blueprintText.includes('measure') || blueprintText.includes('layout') || blueprintText.includes('level') || blueprintText.includes('align')) {
+    console.log('📏 Blueprint requires precision layout - adding measurement tools');
+    
+    const measurementTool: ToolRecommendation = {
+      name: 'PR 30-HVS Rotating Laser Level',
+      model: 'PR 30-HVS',
+      description: 'Professional rotating laser level for precise layout work as specified in blueprints',
+      quantity: 1,
+      rentalDuration: projectData.timeline,
+      monthlyCost: 180,
+      totalCost: 180 * projectData.timeline,
+      category: 'Measuring',
+      productUrl: 'https://www.hilti.com/c/CLS_MEASURING_SYSTEMS_7125/CLS_LASER_LEVELS_7125/CLS_ROTATING_LASERS_7125/r30hvs',
+      specifications: ['600m diameter range', 'Remote control', 'Dual grade capability'],
+      justification: [
+        'Blueprint analysis identified precise layout and leveling requirements',
+        'Critical for accurate implementation of blueprint specifications',
+        'Required for foundation and structural element alignment per drawings'
+      ],
+      competitiveAdvantages: [
+        'Professional-grade accuracy for construction layout',
+        'Remote control increases efficiency and safety',
+        'Fleet service includes calibration and maintenance'
+      ]
+    };
+    additionalTools.push(measurementTool);
+  }
+
+  if (blueprintText.includes('dust') || blueprintText.includes('safety') || blueprintText.includes('indoor')) {
+    console.log('🛡️ Blueprint indicates indoor work - prioritizing dust management');
+    
+    const dustTool: ToolRecommendation = {
+      name: 'TE-CD Dust Management System',
+      model: 'TE-CD',
+      description: 'Advanced dust collection system for health compliance in indoor work areas per blueprints',
+      quantity: 1,
+      rentalDuration: projectData.timeline,
+      monthlyCost: 150,
+      totalCost: 150 * projectData.timeline,
+      category: 'Safety',
+      productUrl: 'https://www.hilti.com/c/CLS_POWER_TOOLS_7124/CLS_DUST_MANAGEMENT_7124/CLS_DUST_REMOVAL_SYSTEMS_7124/rtecd',
+      specifications: ['HEPA filtration', 'Auto-start function', 'High suction power'],
+      justification: [
+        'Blueprint analysis shows indoor work requiring dust management',
+        'Health and safety compliance for enclosed work areas',
+        'Required for clean work environment per blueprint specifications'
+      ],
+      competitiveAdvantages: [
+        'HEPA filtration ensures health compliance',
+        'Auto-start function improves efficiency',
+        'Professional dust management for sensitive environments'
+      ]
+    };
+    additionalTools.push(dustTool);
+  }
+
+  console.log(`📋 Blueprint enhancement: ${additionalTools.length} specialized tools added based on analysis`);
+  
+  return [...enhancedRecommendations, ...additionalTools];
+};
+
+export const generateEnhancedRecommendations = async (projectData: ProjectData): Promise<ToolRecommendation[]> => {
+  // Generating enhanced Fleet Management recommendations with blueprint integration
+  
+  console.log('📋 Generating rule-based recommendations...');
+  
+  // Log blueprint availability
+  if (projectData.blueprint && typeof projectData.blueprint === 'string') {
+    console.log('✨ Blueprint analysis available - will influence rule-based tool selection');
+    console.log('📄 Analysis preview:', projectData.blueprint.substring(0, 200) + '...');
+  }
   
   try {
     // Generate enhanced recommendations with Fleet Management insights
-    const baseRecommendations = generateBasicRecommendations(projectData);
+    const baseRecommendations = await generateBasicRecommendations(projectData);
     
-    // Enhance with Fleet Management benefits directly
-    const enhancedRecommendations = baseRecommendations.map(tool => ({
+    // Apply blueprint-based enhancements if available
+    let enhancedRecommendations = baseRecommendations;
+    if (projectData.blueprint && typeof projectData.blueprint === 'string') {
+      enhancedRecommendations = applyBlueprintEnhancements(enhancedRecommendations, projectData);
+    }
+    
+    // Enhance with Fleet Management benefits
+    const finalRecommendations = enhancedRecommendations.map((tool: ToolRecommendation) => ({
       ...tool,
       // Enhanced justifications with Fleet Management benefits
       justification: [
@@ -195,16 +333,15 @@ export const generateRecommendations = (projectData: ProjectData): ToolRecommend
     }));
     
     // Generated enhanced recommendations with Fleet Management insights
-    return enhancedRecommendations;
-    
+    return finalRecommendations;
   } catch (error) {
     console.error('Enhanced recommendation system failed, using basic engine:', error);
-    return generateBasicRecommendations(projectData);
+    return await generateBasicRecommendations(projectData);
   }
 };
 
 // Original recommendation logic as fallback
-const generateBasicRecommendations = (projectData: ProjectData): ToolRecommendation[] => {
+const generateBasicRecommendations = async (projectData: ProjectData): Promise<ToolRecommendation[]> => {
   const recommendations: ToolRecommendation[] = [];
   const allTools = Object.values(hiltiTools).flat();
   
@@ -259,9 +396,14 @@ const generateBasicRecommendations = (projectData: ProjectData): ToolRecommendat
   });
 
   // Sort by total cost (highest first) and take top recommendations
-  return recommendations
+  const baseRecommendations = recommendations
     .sort((a, b) => b.totalCost - a.totalCost)
     .slice(0, 10);
+
+  // Apply real pricing from catalog - reject any tools without real pricing
+  const enrichedRecommendations = await enrichRecommendationsWithRealPricing(baseRecommendations);
+  
+  return enrichedRecommendations;
 };
 
 const generateJustification = (tool: any, projectData: ProjectData): string[] => {
@@ -383,3 +525,90 @@ export const generateFleetContract = (
   
   return contract;
 };
+
+// Real pricing enrichment function - ONLY uses catalog data, no estimates
+async function enrichRecommendationsWithRealPricing(recommendations: ToolRecommendation[]): Promise<ToolRecommendation[]> {
+  try {
+    // Load the real catalog data
+    const catalogPath = path.join(process.cwd(), 'server', 'dist', 'data', 'hiltiCatalogLLM.json');
+    const catalogData = JSON.parse(readFileSync(catalogPath, 'utf8'));
+    
+    // Create a lookup map to find catalog items by name/model
+    const catalogLookup = new Map();
+    catalogData.forEach((category: any) => {
+      category.products?.forEach((product: any) => {
+        catalogLookup.set(product.name, product);
+        catalogLookup.set(product.sku, product);
+      });
+    });
+
+    console.log('💰 Fallback engine: Using ONLY real catalog pricing - no estimates allowed');
+
+    // Filter recommendations to ONLY include tools with real pricing data
+    const enrichedRecommendations = recommendations
+      .map(rec => {
+        // Try to find the product in catalog by exact name match first
+        let catalogProduct = catalogLookup.get(rec.name);
+        
+        if (!catalogProduct) {
+          // Try to find by model
+          catalogProduct = catalogLookup.get(rec.model);
+        }
+        
+        if (!catalogProduct) {
+          // Try partial name matching as last resort
+          for (const [key, product] of catalogLookup.entries()) {
+            if (typeof key === 'string' && key.includes(rec.name.split(' ')[0])) {
+              catalogProduct = product;
+              break;
+            }
+          }
+        }
+        
+        // ONLY use tools with real pricing data - reject any without real pricing
+        if (!catalogProduct?.pricing || 
+            !catalogProduct.pricing.standardPrice || 
+            catalogProduct.pricing.standardPrice <= 0 ||
+            !catalogProduct.pricing.fleetMonthlyPrice ||
+            catalogProduct.pricing.fleetMonthlyPrice <= 0) {
+          
+          console.warn(`❌ FALLBACK REJECTED ${rec.name} - no real pricing data in catalog`);
+          return null; // Reject tools without real pricing
+        }
+        
+        // Use ONLY real pricing from catalog - no calculations or estimates
+        const realPricing = {
+          standardPrice: catalogProduct.pricing.standardPrice,
+          fleetMonthlyPrice: catalogProduct.pricing.fleetMonthlyPrice,
+          fleetUpfrontCost: catalogProduct.pricing.fleetUpfrontCost || 0,
+          currency: catalogProduct.pricing.currency || 'USD',
+          lastUpdated: catalogProduct.pricing.lastUpdated,
+          priceSource: 'catalog_updated' as const
+        };
+        
+        // Calculate total monthly cost: fleet monthly price per unit × quantity
+        const totalMonthlyCost = realPricing.fleetMonthlyPrice * rec.quantity;
+        const totalFleetCost = totalMonthlyCost * rec.rentalDuration;
+        
+        console.log(`✅ FALLBACK ${rec.name}: $${realPricing.fleetMonthlyPrice}/unit/month × ${rec.quantity} units = $${totalMonthlyCost}/month`);
+        
+        return {
+          ...rec,
+          monthlyCost: totalMonthlyCost,
+          totalCost: totalFleetCost,
+          pricing: realPricing
+        };
+      })
+      .filter(rec => rec !== null); // Remove rejected tools
+    
+    console.log(`✅ Fallback: ${enrichedRecommendations.length} tools with real pricing retained, ${recommendations.length - enrichedRecommendations.length} rejected`);
+    
+    return enrichedRecommendations;
+    
+  } catch (error) {
+    console.error('❌ Fallback: Error using catalog pricing:', error);
+    
+    // Return empty array if catalog lookup fails - no estimates allowed
+    return [];
+  }
+}

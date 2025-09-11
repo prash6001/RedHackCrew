@@ -13,7 +13,7 @@ export interface ProjectFormData {
   existingTools: string[];
   specialRequirements?: string;
   projectComplexity: 'low' | 'medium' | 'high';
-  blueprint?: File;
+  blueprint?: File | string; // Either file or Gemini analysis text
 }
 
 export interface ToolRecommendation {
@@ -39,7 +39,7 @@ export interface ToolRecommendation {
     fleetMonthlyPrice: number;
     fleetUpfrontCost: number;
     currency: string;
-    priceSource: 'hilti_api' | 'estimated';
+    priceSource: 'hilti_api' | 'estimated' | 'catalog_updated';
   };
 }
 
@@ -198,24 +198,38 @@ class ApiClient {
 
   // Comprehensive project analysis with AI/Bedrock integration
   async analyzeProject(projectData: ProjectFormData): Promise<ProjectAnalysis> {
-    const formData = new FormData();
+    const { blueprint } = projectData;
     
-    // Prepare project data (excluding blueprint for JSON)
-    const { blueprint, ...projectDetails } = projectData;
-    formData.append('projectData', JSON.stringify(projectDetails));
-    
-    // Add blueprint if present
-    if (blueprint) {
-      formData.append('blueprint', blueprint);
-    }
+    // Check if blueprint is text (Gemini analysis) or file
+    if (typeof blueprint === 'string') {
+      // Send as JSON when blueprint is Gemini analysis text
+      console.log('📄 Sending Gemini analysis text as blueprint');
+      return this.request('/api/analyze', {
+        method: 'POST',
+        body: JSON.stringify(projectData),
+      });
+    } else {
+      // Send as FormData when blueprint is a file
+      console.log('📁 Sending blueprint file for analysis');
+      const formData = new FormData();
+      
+      // Prepare project data (excluding blueprint file for JSON)
+      const { blueprint: _, ...projectDetails } = projectData;
+      formData.append('projectData', JSON.stringify(projectDetails));
+      
+      // Add blueprint file if present
+      if (blueprint) {
+        formData.append('blueprint', blueprint);
+      }
 
-    return this.request('/api/analyze', {
-      method: 'POST',
-      headers: {
-        // Don't set Content-Type for FormData - let browser set it with boundary
-      },
-      body: formData,
-    });
+      return this.request('/api/analyze', {
+        method: 'POST',
+        headers: {
+          // Don't set Content-Type for FormData - let browser set it with boundary
+        },
+        body: formData,
+      });
+    }
   }
 
   // Generate fleet management proposal

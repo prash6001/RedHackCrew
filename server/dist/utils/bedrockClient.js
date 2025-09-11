@@ -4,7 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { config } from 'dotenv';
-import { hiltiPricingService } from './hiltiPricingService.js';
 // Load environment variables first
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,10 +45,10 @@ const BEDROCK_CONFIG = {
     temperature: 0.3,
     topP: 0.9
 };
-// Filter products by project relevance
+// Enhanced product filtering with blueprint awareness
 const getRelevantProducts = (projectData) => {
     const { projectType } = projectData;
-    // Define relevant categories based on project type
+    // Start with base categories for project type
     const categoryMap = {
         'residential': [
             'Rotary hammers', 'Hammer drills', 'Circular saws', 'Angle grinders',
@@ -77,24 +76,55 @@ const getRelevantProducts = (projectData) => {
             'Safety equipment', 'Measuring tools'
         ]
     };
-    const relevantCategories = categoryMap[projectType] || categoryMap['commercial'];
-    // Filter products by relevant categories
+    let relevantCategories = [...(categoryMap[projectType] || categoryMap['commercial'])];
+    // BLUEPRINT ANALYSIS: Expand categories based on blueprint content
+    if (projectData.blueprint && typeof projectData.blueprint === 'string') {
+        console.log('🎯 Expanding product catalog based on blueprint analysis...');
+        const blueprintText = projectData.blueprint.toLowerCase();
+        // Add specialized categories based on blueprint content
+        const blueprintCategoryExpansions = [
+            // Concrete work
+            { keywords: ['concrete', 'drilling', 'anchor'], categories: ['Accessories for rotary hammers', 'Core drilling', 'Anchoring'] },
+            // Cutting work  
+            { keywords: ['cut', 'saw', 'slab', 'opening'], categories: ['Cut-off saws', 'Cutting', 'Saw blades'] },
+            // Measuring/Layout
+            { keywords: ['measure', 'layout', 'level', 'align'], categories: ['Laser levels', 'Measuring', 'Distance meters'] },
+            // Safety/Dust
+            { keywords: ['dust', 'safety', 'indoor', 'clean'], categories: ['Dust management', 'Safety', 'Vacuum'] },
+            // Fastening
+            { keywords: ['fasten', 'attach', 'mount'], categories: ['Fastening', 'Fastening systems', 'Screwdrivers'] },
+            // Grinding/Polishing
+            { keywords: ['grind', 'polish', 'surface'], categories: ['Angle grinders', 'Polishers', 'Grinders'] },
+            // Demolition
+            { keywords: ['demolish', 'break', 'remove'], categories: ['Demolition hammers', 'Demolition', 'Breaking'] }
+        ];
+        blueprintCategoryExpansions.forEach(expansion => {
+            if (expansion.keywords.some(keyword => blueprintText.includes(keyword))) {
+                console.log(`📋 Blueprint mentions ${expansion.keywords.join('/')}, adding categories: ${expansion.categories.join(', ')}`);
+                relevantCategories.push(...expansion.categories);
+            }
+        });
+    }
+    // Remove duplicates
+    relevantCategories = [...new Set(relevantCategories)];
+    // Filter products by relevant categories - MORE INCLUSIVE approach
     const relevantProducts = [];
     hiltiCatalogData.forEach((categoryData) => {
         const isRelevantCategory = relevantCategories.some(relCat => categoryData.category.toLowerCase().includes(relCat.toLowerCase()) ||
             relCat.toLowerCase().includes(categoryData.category.toLowerCase()));
         if (isRelevantCategory) {
-            // Add top products from this category
+            // Include MORE products from relevant categories (was 3, now 8)
             const topProducts = categoryData.products
-                .filter((product) => product.description && product.technicalSpecs.length > 0)
-                .slice(0, 3); // Limit to top 3 products per category
+                .filter((product) => product.description && product.name)
+                .slice(0, 8); // Increased from 3 to 8 products per category
             relevantProducts.push(...topProducts.map((product) => ({
                 ...product,
                 category: categoryData.category
             })));
         }
     });
-    return relevantProducts.slice(0, 30); // Limit total products
+    console.log(`📊 Catalog filtered: ${relevantProducts.length} products from ${relevantCategories.length} categories`);
+    return relevantProducts.slice(0, 80); // Increased from 30 to 80 total products
 };
 // Create comprehensive Hilti Fleet Management prompt
 const createBedrockPrompt = (projectData) => {
@@ -109,6 +139,16 @@ ${product.features?.length > 0 ? `- Features: ${product.features.join('; ')}` : 
 ${product.applications?.length > 0 ? `- Applications: ${product.applications.join('; ')}` : ''}
 ${product.technicalSpecs?.length > 0 ? `- Technical Specs: ${product.technicalSpecs.slice(0, 3).join('; ')}` : ''}
 `).join('\n');
+    // Include blueprint analysis if available
+    let blueprintSection = '';
+    if (projectData.blueprint && typeof projectData.blueprint === 'string') {
+        blueprintSection = `
+## BLUEPRINT ANALYSIS (AI-Generated from uploaded blueprints):
+${projectData.blueprint}
+
+**CRITICAL**: Use this blueprint analysis to inform your tool selection. The AI has identified specific requirements from the project drawings that should guide your recommendations.
+`;
+    }
     return `
 You are a senior Hilti Fleet Management consultant with deep expertise in construction equipment optimization and Total Cost of Ownership (TCO) analysis.
 
@@ -122,12 +162,34 @@ You are a senior Hilti Fleet Management consultant with deep expertise in constr
 - **Project Complexity**: ${projectData.projectComplexity}
 - **Existing Tools & Equipment**: ${projectData.existingTools.join(', ') || 'None specified'}
 - **Special Requirements**: ${projectData.specialRequirements || 'None specified'}
+${blueprintSection}
 
 ## AVAILABLE HILTI PRODUCTS:
 ${productCatalogSection}
 
 ## TASK:
 From the ACTUAL HILTI PRODUCTS listed above, select the most appropriate tools for this ${projectData.projectType} project with ${projectData.laborCount} workers over ${projectData.timeline} months.
+
+${projectData.blueprint && typeof projectData.blueprint === 'string' ?
+        `**CRITICAL BLUEPRINT REQUIREMENTS**: 
+1. ANALYZE the blueprint requirements carefully - this is the most important factor
+2. SELECT tools that specifically address the blueprint-identified needs
+3. PRIORITIZE specialized tools mentioned in the blueprint analysis  
+4. ENSURE your recommendations directly solve the problems identified in the blueprint
+5. REFERENCE blueprint requirements in your justifications
+
+The AI has analyzed actual project blueprints and identified specific technical requirements. Your tool selection MUST address these specific needs.` :
+        'Focus on selecting tools that best match the project type, complexity, and requirements.'}
+
+## SELECTION CRITERIA (in order of importance):
+${projectData.blueprint && typeof projectData.blueprint === 'string' ?
+        `1. **Blueprint Requirements** (HIGHEST PRIORITY) - Address all needs identified in blueprint analysis
+2. **Project Type Match** - Tools suitable for ${projectData.projectType} projects
+3. **Team Size** - Appropriate for ${projectData.laborCount} workers
+4. **Timeline** - Efficient for ${projectData.timeline} month duration` :
+        `1. **Project Type Match** - Tools suitable for ${projectData.projectType} projects  
+2. **Team Size** - Appropriate for ${projectData.laborCount} workers
+3. **Timeline** - Efficient for ${projectData.timeline} month duration`}
 
 ## CRITICAL: RESPONSE FORMAT MUST BE VALID JSON ONLY
 
@@ -152,8 +214,11 @@ You MUST respond with ONLY a valid JSON object. No explanations, no text before 
         "string - technical spec 4"
       ],
       "justification": [
+        ${projectData.blueprint && typeof projectData.blueprint === 'string' ?
+        `"string - how this tool addresses specific blueprint requirements",
+        "string - why blueprint analysis identified this as critical",` : ''}
         "string - why this tool fits project requirements",
-        "string - how it addresses project complexity",
+        "string - how it addresses project complexity", 
         "string - productivity benefit for team size",
         "string - timeline efficiency benefit",
         "string - competitive advantage"
@@ -290,6 +355,12 @@ export const generateBedrockRecommendations = async (projectData) => {
 // Enhanced mock recommendations with comprehensive Fleet Management intelligence
 const generateEnhancedMockRecommendations = async (projectData) => {
     // Generating comprehensive Fleet Management recommendations
+    console.log('📋 Generating mock recommendations with blueprint consideration');
+    // Log if blueprint analysis is available
+    if (projectData.blueprint && typeof projectData.blueprint === 'string') {
+        console.log('✨ Blueprint analysis available - will influence tool selection');
+        console.log('📄 Analysis preview:', projectData.blueprint.substring(0, 200) + '...');
+    }
     // Helper function to calculate correct total cost
     const calculateTotalCost = (monthlyCost, quantity, duration) => {
         return monthlyCost * quantity * duration;
@@ -387,13 +458,99 @@ const generateEnhancedMockRecommendations = async (projectData) => {
             ]
         });
     }
-    // Generated comprehensive Fleet Management recommendations
+    // Blueprint-aware recommendation adjustments
+    let finalRecommendations = [...baseRecommendations];
+    if (projectData.blueprint && typeof projectData.blueprint === 'string') {
+        console.log('🔧 Adjusting recommendations based on blueprint analysis...');
+        const blueprintText = projectData.blueprint.toLowerCase();
+        // Add drilling tools if blueprint mentions drilling, holes, anchors, etc.
+        if (blueprintText.includes('drill') || blueprintText.includes('hole') ||
+            blueprintText.includes('anchor') || blueprintText.includes('bore')) {
+            console.log('📍 Blueprint indicates drilling requirements - adding specialized drilling tools');
+            finalRecommendations.push({
+                name: "TE 2-22 Cordless rotary hammer",
+                model: "TE 2-22",
+                description: "Lightweight cordless rotary hammer for drilling and light chiseling in concrete",
+                quantity: Math.ceil(projectData.laborCount / 10),
+                monthlyCost: 85,
+                totalCost: calculateTotalCost(85, Math.ceil(projectData.laborCount / 10), projectData.timeline),
+                rentalDuration: projectData.timeline,
+                category: "Drilling",
+                productUrl: "https://www.hilti.com/c/CLS_POWER_TOOLS_7124/CLS_ROTARY_HAMMERS_7124/r22",
+                specifications: [
+                    "Brushless motor for extended runtime",
+                    "SDS-plus chuck system",
+                    "Active Torque Control (ATC)",
+                    "Compact design for tight spaces"
+                ],
+                justification: [
+                    "Blueprint analysis identified drilling requirements",
+                    "Lightweight design ideal for overhead drilling",
+                    "Cordless convenience for blueprint-specified locations",
+                    "ATC technology prevents operator injury during drilling tasks",
+                    "Fleet service ensures consistent availability for project duration"
+                ],
+                competitiveAdvantages: [
+                    'Brushless technology for extended runtime',
+                    'Industry-leading ATC safety system',
+                    'Professional Fleet service included'
+                ]
+            });
+        }
+        // Add cutting tools if blueprint mentions cutting, sawing, etc.
+        if (blueprintText.includes('cut') || blueprintText.includes('saw') ||
+            blueprintText.includes('slab') || blueprintText.includes('concrete')) {
+            console.log('✂️ Blueprint indicates cutting requirements - adding cutting tools');
+            finalRecommendations.push({
+                name: "DSH 600-X 12\" Hand-held saw",
+                model: "DSH 600-X",
+                description: "Powerful handheld gas saw for cutting concrete, asphalt, and other materials",
+                quantity: Math.ceil(projectData.laborCount / 20),
+                monthlyCost: 280,
+                totalCost: calculateTotalCost(280, Math.ceil(projectData.laborCount / 20), projectData.timeline),
+                rentalDuration: projectData.timeline,
+                category: "Cutting",
+                productUrl: "https://www.hilti.com/c/CLS_POWER_TOOLS_7124/CLS_CUTTING_TOOLS_7124/r600x",
+                specifications: [
+                    "12\" cutting capacity",
+                    "X-Torq engine for reduced fuel consumption",
+                    "Active Air Filtration system",
+                    "Semi-automatic belt tensioning"
+                ],
+                justification: [
+                    "Blueprint analysis identified concrete cutting requirements",
+                    "Powerful engine handles tough materials specified in blueprints",
+                    "Reduced emissions important for indoor work areas shown in plans",
+                    "Fleet service includes blade replacement and maintenance",
+                    "Professional-grade performance for blueprint specifications"
+                ],
+                competitiveAdvantages: [
+                    'X-Torq engine technology',
+                    'Active Air Filtration system',
+                    'Complete Fleet service support'
+                ]
+            });
+        }
+        // Add measuring tools if blueprint mentions layout, measurements, levels
+        if (blueprintText.includes('level') || blueprintText.includes('measure') ||
+            blueprintText.includes('layout') || blueprintText.includes('align')) {
+            console.log('📏 Blueprint indicates precision layout requirements - prioritizing measurement tools');
+            // Update existing laser level recommendation to higher priority
+            const laserLevelIndex = finalRecommendations.findIndex(rec => rec.name.includes('Laser'));
+            if (laserLevelIndex >= 0) {
+                finalRecommendations[laserLevelIndex].justification.unshift("Blueprint analysis identified precise layout requirements");
+                finalRecommendations[laserLevelIndex].quantity += 1; // Add extra unit
+                finalRecommendations[laserLevelIndex].totalCost = calculateTotalCost(finalRecommendations[laserLevelIndex].monthlyCost, finalRecommendations[laserLevelIndex].quantity, projectData.timeline);
+            }
+        }
+    }
+    console.log(`📋 Final recommendations count: ${finalRecommendations.length} (${finalRecommendations.length - baseRecommendations.length} added based on blueprint)`);
     // Enrich with real API pricing data and catalog fallback
-    const enrichedRecommendations = await enrichRecommendationsWithPricing(baseRecommendations, hiltiCatalogData);
+    const enrichedRecommendations = await enrichRecommendationsWithPricing(finalRecommendations, hiltiCatalogData);
     return enrichedRecommendations;
 };
 /**
- * Enrich tool recommendations with real Hilti API pricing data
+ * Enrich tool recommendations with pricing data (prioritizing updated catalog over API calls)
  */
 async function enrichRecommendationsWithPricing(recommendations, catalogData) {
     try {
@@ -406,14 +563,18 @@ async function enrichRecommendationsWithPricing(recommendations, catalogData) {
                 catalogLookup.set(product.sku, product);
             });
         });
-        // We need to find the correct product IDs that work with Hilti API
-        // For now, let's try different ID formats and see which ones work
-        const pricingRequests = [];
-        for (const rec of recommendations) {
-            // Try to find the product in catalog by name first, then by model/sku
-            let catalogProduct = catalogLookup.get(rec.name) || catalogLookup.get(rec.model);
+        console.log('💰 Using ONLY real catalog pricing - no estimates or AI pricing allowed');
+        // Filter recommendations to ONLY include tools with real pricing data
+        const enrichedRecommendations = recommendations
+            .map(rec => {
+            // Try to find the product in catalog by exact name match first
+            let catalogProduct = catalogLookup.get(rec.name);
             if (!catalogProduct) {
-                // Try partial name matching as fallback
+                // Try to find by model/sku
+                catalogProduct = catalogLookup.get(rec.model);
+            }
+            if (!catalogProduct) {
+                // Try partial name matching as last resort
                 for (const [key, product] of catalogLookup.entries()) {
                     if (typeof key === 'string' && key.includes(rec.name.split(' ')[0])) {
                         catalogProduct = product;
@@ -421,96 +582,44 @@ async function enrichRecommendationsWithPricing(recommendations, catalogData) {
                     }
                 }
             }
-            if (catalogProduct) {
-                // Use the API product IDs we extracted from tag_item_numbers
-                if (catalogProduct.apiProductIds && catalogProduct.apiProductIds.length > 0) {
-                    // Use the first API product ID
-                    const productId = catalogProduct.apiProductIds[0];
-                    pricingRequests.push({
-                        productId: productId.toString(),
-                        quantity: rec.quantity || 1
-                    });
-                    // Found catalog match and API product ID
-                }
-                else {
-                    console.warn(`⚠️ No API product ID found for ${rec.name} in catalog`);
-                }
+            // ONLY use tools with real pricing data - reject any without real pricing
+            if (!catalogProduct?.pricing ||
+                !catalogProduct.pricing.standardPrice ||
+                catalogProduct.pricing.standardPrice <= 0 ||
+                !catalogProduct.pricing.fleetMonthlyPrice ||
+                catalogProduct.pricing.fleetMonthlyPrice <= 0) {
+                console.warn(`❌ REJECTED ${rec.name} - no real pricing data in catalog`);
+                return null; // Reject tools without real pricing
             }
-            else {
-                console.warn(`⚠️ No catalog match found for ${rec.name}`);
-            }
-        }
-        if (pricingRequests.length === 0) {
-            console.warn('⚠️ No valid product IDs found for API pricing');
-            return recommendations.map(rec => ({
+            // Use ONLY real pricing from catalog - no calculations or estimates
+            const realPricing = {
+                standardPrice: catalogProduct.pricing.standardPrice,
+                fleetMonthlyPrice: catalogProduct.pricing.fleetMonthlyPrice,
+                fleetUpfrontCost: catalogProduct.pricing.fleetUpfrontCost || 0,
+                currency: catalogProduct.pricing.currency || 'USD',
+                lastUpdated: catalogProduct.pricing.lastUpdated,
+                priceSource: 'catalog_updated'
+            };
+            // Calculate total monthly cost: fleet monthly price per unit × quantity
+            const totalMonthlyCost = realPricing.fleetMonthlyPrice * rec.quantity;
+            const totalFleetCost = totalMonthlyCost * rec.rentalDuration;
+            console.log(`✅ ${rec.name}: $${realPricing.fleetMonthlyPrice}/unit/month × ${rec.quantity} units = $${totalMonthlyCost}/month`);
+            return {
                 ...rec,
-                pricing: null // No fake data - only real API data or null
-            }));
-        }
-        // Fetching real prices from Hilti API
-        // Fetch pricing data with retry logic and catalog fallback
-        const pricingResults = await hiltiPricingService.fetchPricesWithRetry(pricingRequests, 2, catalogData);
-        // Create pricing lookup map by product ID
-        const pricingMap = new Map(pricingResults.map(p => [p.productId, p]));
-        // Enrich recommendations with ONLY real API pricing - no fake data
-        const enrichedRecommendations = recommendations.map(rec => {
-            // Find the catalog product to get its API product ID
-            let catalogProduct = catalogLookup.get(rec.name) || catalogLookup.get(rec.model);
-            if (!catalogProduct) {
-                for (const [key, product] of catalogLookup.entries()) {
-                    if (typeof key === 'string' && key.includes(rec.name.split(' ')[0])) {
-                        catalogProduct = product;
-                        break;
-                    }
-                }
-            }
-            // Get real pricing if available
-            let realPricing = null;
-            if (catalogProduct?.apiProductIds?.length > 0) {
-                const productId = catalogProduct.apiProductIds[0].toString();
-                const pricing = pricingMap.get(productId);
-                if (pricing && pricing.success) {
-                    realPricing = {
-                        standardPrice: pricing.standardPrice,
-                        fleetMonthlyPrice: pricing.fleetMonthlyPrice,
-                        fleetUpfrontCost: pricing.fleetUpfrontCost,
-                        currency: pricing.currency,
-                        priceSource: 'hilti_api'
-                    };
-                    // Real API price found
-                }
-            }
-            if (realPricing) {
-                // Use real fleet pricing if available, otherwise keep original estimated monthlyCost
-                const realFleetMonthlyCost = realPricing.fleetMonthlyPrice > 0 ? realPricing.fleetMonthlyPrice : rec.monthlyCost;
-                return {
-                    ...rec,
-                    monthlyCost: realFleetMonthlyCost,
-                    totalCost: realFleetMonthlyCost * rec.quantity * rec.rentalDuration,
-                    pricing: realPricing
-                };
-            }
-            else {
-                console.warn(`⚠️ No real API price found for ${rec.name} - excluding pricing data`);
-                // NO fake pricing data - only return tool without pricing if no API data
-                return {
-                    ...rec,
-                    // Keep original monthlyCost for calculations but don't add fake pricing object
-                    pricing: null
-                };
-            }
-        });
-        const successCount = pricingResults.filter(p => p.success).length;
-        // Successfully enriched recommendations with real API pricing
+                monthlyCost: totalMonthlyCost,
+                totalCost: totalFleetCost,
+                pricing: realPricing
+            };
+        })
+            .filter(rec => rec !== null); // Remove rejected tools
+        const successCount = enrichedRecommendations.length;
+        console.log(`✅ ${successCount} tools with real pricing retained, ${recommendations.length - successCount} rejected`);
         return enrichedRecommendations;
     }
     catch (error) {
-        console.error('❌ Error fetching real API pricing:', error);
-        // NO fake data - return recommendations without pricing if API fails
-        return recommendations.map(rec => ({
-            ...rec,
-            pricing: null
-        }));
+        console.error('❌ Error using catalog pricing:', error);
+        // Return empty array if catalog lookup fails - no estimates allowed
+        return [];
     }
 }
 export default generateBedrockRecommendations;

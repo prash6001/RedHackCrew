@@ -37,7 +37,7 @@ export interface PricingResult {
 declare class HiltiPricingService {
     private readonly apiUrl;
     private readonly fallbackApiUrl;
-    private readonly headers;
+    private getHeaders;
     private readonly graphqlQuery;
     /**
      * Fetch prices for multiple products from Hilti API

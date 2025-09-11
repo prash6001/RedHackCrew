@@ -17,16 +17,24 @@ const HomePage = () => {
     complexity: 'medium',
     existingTools: ''
   });
+  const [geminiResult, setGeminiResult] = useState<any>(null);
 
   const handleStartAnalysis = () => {
     const hasRequiredData = blueprint || (selectedScopes.length > 0);
     if (hasRequiredData && projectDetails.name) {
-      navigate('/analysis', { 
-        state: { 
-          selectedScopes, 
+      const combined = {
+        gemini: geminiResult,
+        projectDetails,
+      };
+      console.log("--- Combined Gemini Result + Project Details ---");
+      console.log(combined);
+      navigate('/analysis', {
+        state: {
+          selectedScopes,
           projectDetails,
-          blueprint
-        } 
+          blueprint,
+          geminiResult
+        },
       });
     }
   };
@@ -190,6 +198,7 @@ const HomePage = () => {
                 <BlueprintUploader 
                   blueprint={blueprint}
                   onBlueprintChange={setBlueprint}
+                  onGeminiResponse={setGeminiResult}
                 />
                 <div className="mt-8">
                   <div className="flex items-center mb-4">
@@ -210,6 +219,7 @@ const HomePage = () => {
               <BlueprintUploader 
                 blueprint={blueprint}
                 onBlueprintChange={setBlueprint}
+                onGeminiResponse={setGeminiResult}
               />
             )}
           </div>

@@ -25,7 +25,7 @@ import { z } from 'zod';
 
 // Import our comprehensive business logic (after env vars are loaded)
 import { generateBedrockRecommendations } from './utils/bedrockClient.js';
-import { generateRecommendations, generateFleetContract } from './utils/recommendationEngine.js';
+import { generateEnhancedRecommendations, generateFleetContract } from './utils/recommendationEngine.js';
 import { calculateProjectMetrics, generateAccurateFleetContract, formatCurrency } from './utils/accurateCalculations.js';
 import { ProjectData, ToolRecommendation, FleetContract, ProjectMetrics } from './types/ProjectData.js';
 
@@ -88,7 +88,8 @@ const ProjectDataSchema = z.object({
   budget: z.number().min(1000, 'Budget must be at least $1,000'),
   existingTools: z.array(z.string()).default([]),
   specialRequirements: z.string().optional(),
-  projectComplexity: z.enum(['low', 'medium', 'high']).default('medium')
+  projectComplexity: z.enum(['low', 'medium', 'high']).default('medium'),
+  blueprint: z.union([z.string(), z.any()]).optional() // Accept string (Gemini analysis) or file
 });
 
 // Health check endpoint
@@ -164,10 +165,13 @@ app.post('/api/analyze', upload.single('blueprint'), async (req, res) => {
       
       projectData = ProjectDataSchema.parse(rawData);
       
-      // Add blueprint if uploaded
+      // Handle blueprint: either file upload or text analysis in JSON
       if (req.file) {
         projectData.blueprint = req.file as any; // Multer file object
-        // Blueprint uploaded
+        console.log('📁 Blueprint file received');
+      } else if (projectData.blueprint && typeof projectData.blueprint === 'string') {
+        console.log('📄 Gemini analysis text received in blueprint field');
+        console.log('✨ Analysis preview:', projectData.blueprint.substring(0, 200) + '...');
       }
     } catch (validationError) {
       console.error('❌ Validation error:', validationError);
@@ -195,7 +199,7 @@ app.post('/api/analyze', upload.single('blueprint'), async (req, res) => {
       }
     } catch (bedrockError) {
       // Bedrock unavailable, using enhanced rule-based engine
-      recommendations = generateRecommendations(projectData);
+      recommendations = await generateEnhancedRecommendations(projectData);
       useBedrockAI = false;
     }
 
@@ -206,10 +210,30 @@ app.post('/api/analyze', upload.single('blueprint'), async (req, res) => {
     const fleetContract = generateAccurateFleetContract(projectData, recommendations);
 
     // Calculate financial summary
+    // Calculate accurate financial metrics using real pricing data
     const totalToolValue = recommendations.reduce((sum, tool) => sum + tool.totalCost, 0);
     const totalMonthlyCost = recommendations.reduce((sum, tool) => sum + tool.monthlyCost, 0);
     
-    // Enhanced response with comprehensive analysis
+    // Calculate actual retail price from API data, fallback to estimate if unavailable
+    const totalRetailPrice = recommendations.reduce((sum, tool) => {
+      if (tool.pricing && tool.pricing.standardPrice) {
+        return sum + (tool.pricing.standardPrice * tool.quantity);
+      }
+      // Fallback to 4.2x multiplier if no real pricing data
+      return sum + (tool.totalCost * 4.2);
+    }, 0);
+    
+    // For accurate comparison, use Total Cost of Ownership vs Fleet costs
+    // TCO includes: purchase price + maintenance (20% annually) + admin overhead + risk
+    const annualMaintenanceRate = 0.20; // 20% of purchase price annually
+    const projectYears = projectData.timeline / 12;
+    const maintenanceCosts = totalRetailPrice * annualMaintenanceRate * projectYears;
+    const adminOverhead = 2400 * projectYears; // $2,400/year administrative overhead
+    const theftRisk = totalRetailPrice * 0.08 * projectYears; // 8% annual theft risk
+    
+    const totalOwnershipCost = totalRetailPrice + maintenanceCosts + adminOverhead + theftRisk;
+    const actualSavings = totalOwnershipCost - totalToolValue;
+    const actualSavingsPercentage = totalOwnershipCost > 0 ? (actualSavings / totalOwnershipCost) * 100 : 0;    // Enhanced response with comprehensive analysis
     const analysis = {
       // Project overview
       project: {
@@ -242,12 +266,15 @@ app.post('/api/analyze', upload.single('blueprint'), async (req, res) => {
 
       // Financial analysis
       financial: {
-        totalInvestment: totalToolValue,
-        monthlyPayment: totalMonthlyCost,
-        estimatedSavings: fleetContract.estimatedSavings,
-        savingsPercentage: (fleetContract.estimatedSavings / (totalToolValue * 4.2)) * 100,
+        totalInvestment: Math.round(totalToolValue * 100) / 100,
+        monthlyPayment: Math.round(totalMonthlyCost * 100) / 100,
+        estimatedSavings: Math.round(actualSavings * 100) / 100,
+        // Use TCO vs fleet pricing comparison for accurate savings
+        savingsPercentage: Math.round(actualSavingsPercentage * 100) / 100,
+        retailPrice: Math.round(totalRetailPrice * 100) / 100,
+        totalOwnershipCost: Math.round(totalOwnershipCost * 100) / 100, // Include TCO for transparency
         paybackPeriod: Math.ceil(totalToolValue / (projectMetrics.totalROI / projectData.timeline)),
-        budgetUtilization: (totalToolValue / projectData.budget) * 100
+        budgetUtilization: Math.round((totalToolValue / projectData.budget) * 10000) / 100
       },
 
       // Project performance metrics
@@ -261,8 +288,11 @@ app.post('/api/analyze', upload.single('blueprint'), async (req, res) => {
         returnOnInvestment: (projectMetrics.totalROI - totalToolValue) / totalToolValue
       },
 
-      // Fleet contract details
-      contract: fleetContract
+      // Fleet contract details (update with accurate savings)
+      contract: {
+        ...fleetContract,
+        estimatedSavings: actualSavings
+      }
     };
 
     // Analysis complete

@@ -7,7 +7,7 @@ export interface ProjectData {
   timeline: number; // in months
   budget: number;
   existingTools: string[];
-  blueprint?: File | null;
+  blueprint?: File | string | null; // File object or Gemini analysis text
   specialRequirements?: string;
   projectComplexity: 'low' | 'medium' | 'high';
 }
@@ -32,7 +32,7 @@ export interface ToolRecommendation {
     fleetMonthlyPrice: number;
     fleetUpfrontCost: number;
     currency: string;
-    priceSource: 'hilti_api' | 'estimated';
+    priceSource: 'hilti_api' | 'estimated' | 'catalog_updated';
   } | null;
 }
 

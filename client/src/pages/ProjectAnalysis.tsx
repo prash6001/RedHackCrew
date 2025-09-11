@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Zap, DollarSign, Shield, Clock, FileImage, AlertCircle } from 'lucide-react';
 import ToolRecommendations from '../components/ToolRecommendations';
@@ -14,7 +14,7 @@ const ProjectAnalysis = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { selectedScopes, projectDetails, blueprint } = location.state || {};
+  const { selectedScopes, projectDetails, blueprint, geminiResult } = location.state || {};
 
   // Helper function to map old project types to new API format
   const mapProjectType = (oldType: string): ProjectFormData['projectType'] => {
@@ -56,6 +56,7 @@ const ProjectAnalysis = () => {
 
       try {
         // Convert the old projectDetails format to new API format
+        // Priority: Use Gemini analysis text as blueprint, otherwise send blueprint file
         const projectData: ProjectFormData = {
           projectName: projectDetails.name || 'Unnamed Project',
           projectType: mapProjectType(projectDetails.projectType || 'commercial'),
@@ -65,17 +66,25 @@ const ProjectAnalysis = () => {
           budget: convertBudgetToNumber(projectDetails.budget) || 500000,
           existingTools: projectDetails.existingTools ? 
             (typeof projectDetails.existingTools === 'string' ? 
-              projectDetails.existingTools.split(',').map(t => t.trim()).filter(t => t) : 
+              projectDetails.existingTools.split(',').map((t: string) => t.trim()).filter((t: string) => t) : 
               projectDetails.existingTools
             ) : [],
           specialRequirements: projectDetails.specialRequirements || '',
           projectComplexity: (projectDetails.complexity as 'low' | 'medium' | 'high') || 'medium',
-          blueprint: blueprint
+          // Send Gemini analysis text as blueprint if available, otherwise send file
+          blueprint: geminiResult || blueprint
         };
 
         console.log('🔍 Sending project data to server:', projectData);
+        
+        if (geminiResult) {
+          console.log('📄 Blueprint processed by Gemini - sending text analysis in blueprint field');
+          console.log('✨ Gemini Analysis Preview:', geminiResult.substring(0, 200) + '...');
+        } else if (blueprint) {
+          console.log('📁 Sending blueprint file for server-side analysis');
+        }
 
-        console.log('🔍 Starting server-side analysis...', projectData);
+        console.log('🔍 Starting server-side analysis...');
 
         // Call the enhanced server API with retry logic
         const analysis = await withRetry(() => api.analyzeProject(projectData), 3, 2000);
@@ -108,10 +117,14 @@ const ProjectAnalysis = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#e30613] mx-auto mb-8"></div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            {blueprint ? 'AI Blueprint Analysis in Progress' : 'Analyzing Your Project Requirements'}
+            {blueprint && geminiResult ? 'AI Blueprint Analysis Complete - Processing Recommendations' : 
+             blueprint ? 'AI Blueprint Analysis in Progress' : 
+             'Analyzing Your Project Requirements'}
           </h1>
           <p className="text-xl text-gray-600 mb-8">
-            {analysisData?.analysis.method === 'bedrock' 
+            {blueprint && geminiResult 
+              ? 'Using Gemini blueprint analysis results to generate optimal tool recommendations...'
+              : analysisData?.analysis.method === 'bedrock' 
               ? 'AWS Bedrock Claude 3.5 Sonnet is generating intelligent recommendations...' 
               : 'Our enhanced AI system is processing your scope and generating optimal tool recommendations...'
             }
@@ -137,7 +150,7 @@ const ProjectAnalysis = () => {
               {blueprint && (
                 <div className="flex items-center text-indigo-600">
                   <FileImage className="h-5 w-5 mr-3" />
-                  <span>Processing blueprint for intelligent scope detection</span>
+                  <span>{geminiResult ? 'Blueprint analyzed with Gemini AI - integrating insights' : 'Processing blueprint for intelligent scope detection'}</span>
                 </div>
               )}
             </div>
@@ -195,7 +208,7 @@ const ProjectAnalysis = () => {
         {displayData.project.hasBlueprint && (
           <div className="mt-4 inline-flex items-center px-4 py-2 bg-purple-100 text-purple-800 rounded-full text-sm">
             <FileImage className="h-4 w-4 mr-2" />
-            Blueprint processed with {displayData.analysis.method === 'bedrock' ? 'Claude 3.5 Sonnet' : 'Enhanced AI'}
+            Blueprint processed with {geminiResult ? 'Gemini 2.0 Flash + ' : ''}{displayData.analysis.method === 'bedrock' ? 'Claude 3.5 Sonnet' : 'Enhanced AI'}
           </div>
         )}
         {analysisData && (
@@ -215,7 +228,12 @@ const ProjectAnalysis = () => {
       <div className="grid md:grid-cols-4 gap-6 mb-12">
         <div className="bg-white rounded-xl p-6 shadow-lg text-center">
           <div className="text-3xl font-bold text-[#e30613] mb-2">
-            ${displayData.financial.estimatedSavings.toLocaleString()}
+            {new Intl.NumberFormat('en-US', {
+              style: 'currency',
+              currency: 'USD',
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            }).format(displayData.financial.estimatedSavings)}
           </div>
           <div className="text-sm text-gray-600">Total Savings</div>
           <div className="text-lg font-semibold text-green-600">
@@ -273,6 +291,7 @@ const ProjectAnalysis = () => {
               projectDetails, 
               selectedScopes, 
               blueprint,
+              geminiResult,
               serverConnected: !!analysisData // Pass connection status
             } 
           })}
