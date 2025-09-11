@@ -217,11 +217,11 @@ const ProjectAnalysis = () => {
             Blueprint processed with {geminiResult ? 'Gemini 2.0 Flash + ' : ''}{displayData.analysis.method === 'bedrock' ? 'Claude 3.5 Sonnet' : 'Enhanced AI'}
           </div>
         )}
-        {analysisData && (
+        {/* {analysisData && (
           <div className="mt-4 text-sm text-gray-500">
             Analysis Method: {analysisData.analysis.model}
           </div>
-        )}
+        )} */}
         {error && (
           <div className="mt-4 inline-flex items-center px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full text-sm">
             <AlertCircle className="h-4 w-4 mr-2" />
@@ -279,9 +279,9 @@ const ProjectAnalysis = () => {
       </div>
 
       {/* Charts */}
-      <div className="grid md:grid-cols-2 gap-8 mb-12">
+      <div className=" mb-12">
         <SavingsChart recommendations={displayData} />
-        <ProductivityChart recommendations={displayData} />
+        {/* <ProductivityChart recommendations={displayData} /> */}
       </div>
 
       {/* Tool Recommendations */}

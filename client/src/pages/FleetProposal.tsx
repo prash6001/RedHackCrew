@@ -86,9 +86,7 @@ const FleetProposal = () => {
       <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Fleet Management Proposal
-            </h1>
+            <h1 className="text-3xl font-bold text-gray-900">FLEET ONBOARD</h1>
             <p className="text-lg text-gray-600 mt-2">
               Project: {projectDetails.name}
             </p>

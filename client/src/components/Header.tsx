@@ -15,7 +15,7 @@ const Header = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">HILTI</h1>
-              <p className="text-red-100 text-sm">Fleet Management</p>
+              <p className="text-red-100 text-sm">Fleet Onboard</p>
             </div>
           </Link>
           
