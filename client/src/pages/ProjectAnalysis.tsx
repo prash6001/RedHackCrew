@@ -231,7 +231,7 @@ const ProjectAnalysis = () => {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid md:grid-cols-4 gap-6 mb-12">
+      <div className="grid md:grid-cols-2 gap-6 mb-12">
         <div className="bg-white rounded-xl p-6 shadow-lg text-center">
           <div className="text-3xl font-bold text-[#e30613] mb-2">
             {new Intl.NumberFormat('en-US', {
@@ -257,7 +257,7 @@ const ProjectAnalysis = () => {
           </div>
         </div>
         
-        <div className="bg-white rounded-xl p-6 shadow-lg text-center">
+        {/* <div className="bg-white rounded-xl p-6 shadow-lg text-center">
           <div className="text-3xl font-bold text-green-600 mb-2">
             +{Math.round(displayData.metrics.productivityIncrease * 100)}%
           </div>
@@ -275,7 +275,7 @@ const ProjectAnalysis = () => {
           <div className="text-lg font-semibold text-gray-800">
             Fleet Management Service
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Charts */}
