@@ -9,6 +9,8 @@ export interface ProjectData {
     blueprint?: File | string | null;
     specialRequirements?: string;
     projectComplexity: 'low' | 'medium' | 'high';
+    noOfFloors?: number;
+    selectedScopes?: string[];
 }
 export interface ToolRecommendation {
     id?: string;

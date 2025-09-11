@@ -160,6 +160,8 @@ You are a senior Hilti Fleet Management consultant with deep expertise in constr
 - **Timeline (months)**: ${projectData.timeline}
 - **Budget Range ($)**: $${projectData.budget.toLocaleString()}
 - **Project Complexity**: ${projectData.projectComplexity}
+${projectData.noOfFloors ? `- **Number of Floors**: ${projectData.noOfFloors}` : ''}
+${projectData.selectedScopes && projectData.selectedScopes.length > 0 ? `- **Manual Scope Selection**: ${projectData.selectedScopes.join(', ')}` : ''}
 - **Existing Tools & Equipment**: ${projectData.existingTools.join(', ') || 'None specified'}
 - **Special Requirements**: ${projectData.specialRequirements || 'None specified'}
 ${blueprintSection}
@@ -308,6 +310,10 @@ export const generateBedrockRecommendations = async (projectData) => {
         if (!responseText) {
             throw new Error('No response text received from Bedrock');
         }
+        console.log('🔍 RAW BEDROCK RESPONSE TEXT:');
+        console.log('---START OF RESPONSE---');
+        console.log(responseText);
+        console.log('---END OF RESPONSE---');
         // Received response from AWS Bedrock
         // Parse the JSON response
         let recommendations;
@@ -360,6 +366,13 @@ const generateEnhancedMockRecommendations = async (projectData) => {
     if (projectData.blueprint && typeof projectData.blueprint === 'string') {
         console.log('✨ Blueprint analysis available - will influence tool selection');
         console.log('📄 Analysis preview:', projectData.blueprint.substring(0, 200) + '...');
+    }
+    // Log new fields if available
+    if (projectData.noOfFloors) {
+        console.log(`🏢 Number of floors: ${projectData.noOfFloors} (multi-story considerations will apply)`);
+    }
+    if (projectData.selectedScopes && projectData.selectedScopes.length > 0) {
+        console.log(`🎯 Manual scope selection: ${projectData.selectedScopes.join(', ')} (will influence tool selection)`);
     }
     // Helper function to calculate correct total cost
     const calculateTotalCost = (monthlyCost, quantity, duration) => {
@@ -544,7 +557,60 @@ const generateEnhancedMockRecommendations = async (projectData) => {
             }
         }
     }
-    console.log(`📋 Final recommendations count: ${finalRecommendations.length} (${finalRecommendations.length - baseRecommendations.length} added based on blueprint)`);
+    // Handle manual scope selections if provided (without blueprint)
+    if (projectData.selectedScopes && projectData.selectedScopes.length > 0 && (!projectData.blueprint || typeof projectData.blueprint !== 'string')) {
+        console.log('🎯 Adjusting recommendations based on manual scope selections...');
+        projectData.selectedScopes.forEach(scope => {
+            const scopeLower = scope.toLowerCase();
+            // Add tools based on selected scopes
+            if (scopeLower.includes('drilling') || scopeLower.includes('anchoring')) {
+                console.log(`📍 Scope "${scope}" indicates drilling needs - prioritizing drilling tools`);
+                // Increase quantities for existing drilling tools or add more
+                const drillingTools = finalRecommendations.filter(rec => rec.category.toLowerCase().includes('drilling') ||
+                    rec.name.toLowerCase().includes('drill') ||
+                    rec.name.toLowerCase().includes('hammer'));
+                drillingTools.forEach(tool => {
+                    tool.justification.unshift(`Manual scope selection identified ${scope} requirements`);
+                });
+            }
+            if (scopeLower.includes('cutting') || scopeLower.includes('sawing')) {
+                console.log(`✂️ Scope "${scope}" indicates cutting needs - prioritizing cutting tools`);
+                // Similar logic for cutting tools
+                const cuttingTools = finalRecommendations.filter(rec => rec.category.toLowerCase().includes('cutting') ||
+                    rec.name.toLowerCase().includes('saw') ||
+                    rec.name.toLowerCase().includes('cut'));
+                cuttingTools.forEach(tool => {
+                    tool.justification.unshift(`Manual scope selection identified ${scope} requirements`);
+                });
+            }
+            if (scopeLower.includes('measuring') || scopeLower.includes('layout')) {
+                console.log(`📏 Scope "${scope}" indicates layout needs - prioritizing measuring tools`);
+                const measuringTools = finalRecommendations.filter(rec => rec.category.toLowerCase().includes('layout') ||
+                    rec.name.toLowerCase().includes('laser') ||
+                    rec.name.toLowerCase().includes('level'));
+                measuringTools.forEach(tool => {
+                    tool.justification.unshift(`Manual scope selection identified ${scope} requirements`);
+                });
+            }
+        });
+    }
+    // Multi-floor considerations
+    if (projectData.noOfFloors && projectData.noOfFloors > 1) {
+        console.log(`🏢 Multi-story project (${projectData.noOfFloors} floors) - adjusting for vertical work`);
+        // Increase quantities for tools needed for multi-story work
+        finalRecommendations.forEach(rec => {
+            if (rec.name.toLowerCase().includes('laser') ||
+                rec.name.toLowerCase().includes('level') ||
+                rec.category.toLowerCase().includes('layout')) {
+                // Add extra equipment for multi-story layout work  
+                const floorsMultiplier = Math.ceil((projectData.noOfFloors || 1) / 3); // Extra unit per 3 floors
+                rec.quantity += floorsMultiplier;
+                rec.totalCost = calculateTotalCost(rec.monthlyCost / (rec.quantity - floorsMultiplier), rec.quantity, projectData.timeline);
+                rec.justification.unshift(`Multi-story project (${projectData.noOfFloors} floors) requires additional layout equipment`);
+            }
+        });
+    }
+    console.log(`📋 Final recommendations count: ${finalRecommendations.length} (${finalRecommendations.length - baseRecommendations.length} added based on analysis)`);
     // Enrich with real API pricing data and catalog fallback
     const enrichedRecommendations = await enrichRecommendationsWithPricing(finalRecommendations, hiltiCatalogData);
     return enrichedRecommendations;

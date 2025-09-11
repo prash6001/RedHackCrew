@@ -89,7 +89,9 @@ const ProjectDataSchema = z.object({
   existingTools: z.array(z.string()).default([]),
   specialRequirements: z.string().optional(),
   projectComplexity: z.enum(['low', 'medium', 'high']).default('medium'),
-  blueprint: z.union([z.string(), z.any()]).optional() // Accept string (Gemini analysis) or file
+  blueprint: z.union([z.string(), z.any()]).optional(), // Accept string (Gemini analysis) or file
+  noOfFloors: z.number().optional(), // Number of floors in the building
+  selectedScopes: z.array(z.string()).optional() // Manual scope of work selection
 });
 
 // Health check endpoint
