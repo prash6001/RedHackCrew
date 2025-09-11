@@ -90,8 +90,7 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
             return;
           }
           console.log("Using access token:", accessToken);
-          const promptText =
-            "I am a construction equipment expert specializing in Hilti tools and equipment. I need to analyze a blueprint to recommend the most suitable Hilti tools for a job site"; // Replace or pass as prop
+          const promptText = import.meta.env.VITE_PROMPT_TEXT;
           const mimeType = file.type;
           const result = await sendToGemini({
             accessToken,
@@ -130,8 +129,7 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
           return;
         }
         console.log("Using access token:", accessToken);
-        const promptText =
-          "I am a construction equipment expert specializing in Hilti tools and equipment. I need to analyze a blueprint to recommend the most suitable Hilti tools for a job site"; // Replace or pass as prop
+        const promptText = import.meta.env.VITE_PROMPT_TEXT;
         const mimeType = file.type;
         const result = await sendToGemini({
           accessToken,
