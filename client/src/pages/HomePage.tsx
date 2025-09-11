@@ -6,6 +6,7 @@ import {
   TrendingUp,
   Shield,
   Clock,
+  Loader2,
 } from "lucide-react";
 import ScopeOfWorkSelector from "../components/ScopeOfWorkSelector";
 import BlueprintUploader from "../components/BlueprintUploader";
@@ -28,6 +29,7 @@ const HomePage = () => {
     existingTools: "",
   });
   const [geminiResult, setGeminiResult] = useState<unknown>(null);
+  const [isGeminiLoading, setIsGeminiLoading] = useState(false);
 
   const handleScopeDetailChange = (scopeId: string, description: string) => {
     setScopeDetails((prev) => {
@@ -88,7 +90,7 @@ const HomePage = () => {
           scopeDetails,
           projectDetails,
           blueprint,
-          geminiResult
+          geminiResult,
         },
       });
     }
@@ -311,6 +313,7 @@ const HomePage = () => {
                   blueprint={blueprint}
                   onBlueprintChange={setBlueprint}
                   onGeminiResponse={setGeminiResult}
+                  onLoadingChange={setIsGeminiLoading}
                 />
                 <div className="mt-8">
                   <div className="flex items-center mb-4">
@@ -336,6 +339,7 @@ const HomePage = () => {
                 blueprint={blueprint}
                 onBlueprintChange={setBlueprint}
                 onGeminiResponse={setGeminiResult}
+                onLoadingChange={setIsGeminiLoading}
               />
             )}
           </div>
@@ -348,15 +352,27 @@ const HomePage = () => {
               (!blueprint && selectedScopes.length === 0) ||
               !projectDetails.name ||
               !projectDetails.projectType ||
-              !validateScopeDetails()
+              !validateScopeDetails() ||
+              isGeminiLoading
             }
             className="inline-flex items-center px-8 py-4 bg-[#e30613] text-white font-semibold rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
-            Start Fleet Analysis
-            <ArrowRight className="ml-2 h-5 w-5" />
+            {isGeminiLoading ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Analyzing Blueprint...
+              </>
+            ) : (
+              <>
+                Start Fleet Analysis
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </>
+            )}
           </button>
           <p className="text-sm text-gray-500 mt-2">
-            {blueprint
+            {isGeminiLoading
+              ? "AI is analyzing your blueprint. Please wait..."
+              : blueprint
               ? "AI will analyze your blueprint and generate recommendations"
               : selectedScopes.length > 0
               ? "Please provide detailed descriptions for all selected scopes"
@@ -375,8 +391,8 @@ const HomePage = () => {
             Cost Optimization
           </h3>
           <p className="text-gray-600">
-            Fleet contracts reduce tool costs compared to
-            individual purchases, with predictable monthly payments.
+            Fleet contracts reduce tool costs compared to individual purchases,
+            with predictable monthly payments.
           </p>
         </div>
 

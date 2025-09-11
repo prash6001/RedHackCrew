@@ -45,22 +45,27 @@ async function sendToGemini({
   return result;
 }
 
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useMemo } from "react";
 import { Upload, FileImage, X, CheckCircle } from "lucide-react";
 
 interface BlueprintUploaderProps {
   blueprint: File | null;
   onBlueprintChange: (file: File | null) => void;
-  onGeminiResponse?: (response: any) => void;
+  onGeminiResponse?: (response: unknown) => void;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
   blueprint,
   onBlueprintChange,
   onGeminiResponse,
+  onLoadingChange,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const allowedTypes = ["image/png", "image/jpeg", "application/pdf"];
+  const allowedTypes = useMemo(
+    () => ["image/png", "image/jpeg", "application/pdf"],
+    []
+  );
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -83,25 +88,30 @@ const BlueprintUploader: React.FC<BlueprintUploaderProps> = ({
           const base64 = await fileToBase64(file);
           const pureBase64 = base64.split(",")[1] || base64;
           onBlueprintChange(file);
-          
+
           // Try to call Gemini API if configured
           const accessToken = import.meta.env.VITE_GEMINI_API_TOKEN;
           if (!accessToken) {
-            console.warn("Gemini API token not configured. Blueprint uploaded without AI analysis.");
+            console.warn(
+              "Gemini API token not configured. Blueprint uploaded without AI analysis."
+            );
             return;
           }
-          
+
           try {
             console.log("Calling Gemini API for blueprint analysis...");
+            onLoadingChange?.(true);
             const promptText = import.meta.env.VITE_PROMPT_TEXT;
             console.log("🔍 Prompt text from env:", promptText);
-            
+
             if (!promptText) {
               console.warn("VITE_PROMPT_TEXT not found, using fallback prompt");
             }
-            
+
             // Use enhanced directive prompt to force concrete analysis
-            const finalPrompt = promptText || `ANALYZE THIS BLUEPRINT AND EXTRACT SPECIFIC CONSTRUCTION REQUIREMENTS:
+            const finalPrompt =
+              promptText ||
+              `ANALYZE THIS BLUEPRINT AND EXTRACT SPECIFIC CONSTRUCTION REQUIREMENTS:
 
 You are a construction equipment expert analyzing a building blueprint. You MUST analyze the actual blueprint image and provide concrete, actionable information for tool selection.
 
@@ -149,7 +159,7 @@ RECOMMENDED TOOL CATEGORIES:
 - [Tool category 2] for [specific blueprint requirement]
 - [etc.]`;
             console.log("📝 Using enhanced directive prompt");
-            
+
             const mimeType = file.type;
             const result = await sendToGemini({
               accessToken,
@@ -158,17 +168,21 @@ RECOMMENDED TOOL CATEGORIES:
               mimeType,
             });
             if (onGeminiResponse) {
-              onGeminiResponse(result?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "No Gemini response text found.");
+              onGeminiResponse(
+                result?.candidates?.[0]?.content?.parts?.[0]?.text ||
+                  "No Gemini response text found."
+              );
             }
           } catch (error) {
             console.error("Gemini API call failed:", error);
             // Blueprint is still uploaded, just without AI analysis
+          } finally {
+            onLoadingChange?.(false);
           }
         }
       }
     },
-    [onBlueprintChange, allowedTypes, onGeminiResponse]
+    [onBlueprintChange, allowedTypes, onGeminiResponse, onLoadingChange]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -183,25 +197,30 @@ RECOMMENDED TOOL CATEGORIES:
         const base64 = await fileToBase64(file);
         const pureBase64 = base64.split(",")[1] || base64;
         onBlueprintChange(file);
-        
+
         // Try to call Gemini API if configured
         const accessToken = import.meta.env.VITE_GEMINI_API_TOKEN;
         if (!accessToken) {
-          console.warn("Gemini API token not configured. Blueprint uploaded without AI analysis.");
+          console.warn(
+            "Gemini API token not configured. Blueprint uploaded without AI analysis."
+          );
           return;
         }
-        
+
         try {
           console.log("Calling Gemini API for blueprint analysis...");
+          onLoadingChange?.(true);
           const promptText = import.meta.env.VITE_PROMPT_TEXT;
           console.log("🔍 Prompt text from env:", promptText);
-          
+
           if (!promptText) {
             console.warn("VITE_PROMPT_TEXT not found, using fallback prompt");
           }
-          
+
           // Use enhanced directive prompt to force concrete analysis
-          const finalPrompt = promptText || `ANALYZE THIS BLUEPRINT AND EXTRACT SPECIFIC CONSTRUCTION REQUIREMENTS:
+          const finalPrompt =
+            promptText ||
+            `ANALYZE THIS BLUEPRINT AND EXTRACT SPECIFIC CONSTRUCTION REQUIREMENTS:
 
 You are a construction equipment expert analyzing a building blueprint. You MUST analyze the actual blueprint image and provide concrete, actionable information for tool selection.
 
@@ -249,7 +268,7 @@ RECOMMENDED TOOL CATEGORIES:
 - [Tool category 2] for [specific blueprint requirement]
 - [etc.]`;
           console.log("📝 Using enhanced directive prompt");
-          
+
           const mimeType = file.type;
           const result = await sendToGemini({
             accessToken,
@@ -258,12 +277,16 @@ RECOMMENDED TOOL CATEGORIES:
             mimeType,
           });
           if (onGeminiResponse) {
-            onGeminiResponse(result?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "No Gemini response text found.");
+            onGeminiResponse(
+              result?.candidates?.[0]?.content?.parts?.[0]?.text ||
+                "No Gemini response text found."
+            );
           }
         } catch (error) {
           console.error("Gemini API call failed:", error);
           // Blueprint is still uploaded, just without AI analysis
+        } finally {
+          onLoadingChange?.(false);
         }
       }
     }
@@ -313,7 +336,7 @@ RECOMMENDED TOOL CATEGORIES:
               Supports: JPG, PNG, PDF (Max 10MB)
             </p>
             <button
-              type="button" 
+              type="button"
               className="mt-4 inline-flex items-center px-4 py-2 bg-[#e30613] text-white rounded-lg hover:bg-red-700 transition-colors"
               onClick={() => fileInputRef.current?.click()}
             >
