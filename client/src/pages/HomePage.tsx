@@ -88,6 +88,7 @@ const HomePage = () => {
           scopeDetails,
           projectDetails,
           blueprint,
+          geminiResult
         },
       });
     }

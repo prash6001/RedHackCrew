@@ -1,0 +1,19 @@
+{
+  "name": "redhackcrew-catalog-processor",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Product catalog processing for RedHackCrew project",
+  "scripts": {
+    "process-catalog": "node scripts/processCatalog.js",
+    "update-prices": "node scripts/updateCatalogPrices.js", 
+    "test-pricing-api": "node scripts/testPricingAPI.js",
+    "test-catalog-pricing": "node scripts/testCatalogPricing.js",
+    "test-blueprint-fix": "node scripts/testBlueprintFix.js",
+    "test-bedrock-improvements": "node scripts/testBedrockImprovements.js",
+    "test-gemini-prompt": "node scripts/testGeminiPrompt.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
+  "private": true
+}

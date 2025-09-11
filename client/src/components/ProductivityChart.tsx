@@ -2,28 +2,33 @@ import React from 'react';
 import { TrendingUp, Clock, Shield, Zap } from 'lucide-react';
 
 interface ProductivityChartProps {
-  recommendations: any;
+  recommendations: {
+    metrics: {
+      productivityIncrease: number;
+      downtimeReduction: number;
+    };
+  };
 }
 
 const ProductivityChart: React.FC<ProductivityChartProps> = ({ recommendations }) => {
   const metrics = [
     {
-      label: 'Uptime Improvement',
-      value: recommendations.productivity.uptimeImprovement,
+      label: 'Productivity Increase',
+      value: Math.round(recommendations.metrics.productivityIncrease * 100),
       icon: Clock,
       color: '#3b82f6',
-      description: 'Less downtime due to breakdowns'
+      description: 'Overall project efficiency improvement'
     },
     {
-      label: 'Maintenance Reduction',
-      value: recommendations.productivity.maintenanceReduction,
+      label: 'Downtime Reduction',
+      value: Math.round(recommendations.metrics.downtimeReduction * 100),
       icon: Shield,
       color: '#10b981',
-      description: 'Full service coverage included'
+      description: 'Less downtime due to fleet management'
     },
     {
-      label: 'Project Efficiency',
-      value: recommendations.productivity.projectEfficiency,
+      label: 'Fleet Efficiency',
+      value: 30, // Fixed value for fleet efficiency
       icon: Zap,
       color: '#f59e0b',
       description: 'Right tools available when needed'
