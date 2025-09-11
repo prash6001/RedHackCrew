@@ -341,6 +341,12 @@ export const generateBedrockRecommendations = async (projectData: ProjectData): 
       throw new Error('No response text received from Bedrock');
     }
 
+    console.log('🔍 RAW BEDROCK RESPONSE TEXT:');
+    console.log('---START OF RESPONSE---');
+    console.log(responseText);
+
+    console.log('---END OF RESPONSE---');
+
     // Received response from AWS Bedrock
 
     // Parse the JSON response

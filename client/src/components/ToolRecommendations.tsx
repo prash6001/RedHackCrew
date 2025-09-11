@@ -149,11 +149,11 @@ const ToolRecommendations: React.FC<ToolRecommendationsProps> = ({ tools }) => {
                     <DollarSign className="h-5 w-5 text-green-600 mr-2" />
                     <span className="text-sm font-medium text-green-800">Monthly Fleet Cost</span>
                   </div>
-                  <div className="text-2xl font-bold text-green-600">{formatCurrency(tool.monthlyCost * tool.quantity)}</div>
-                  <div className="text-sm text-green-700">{formatCurrency(tool.monthlyCost)} per unit</div>
+                  <div className="text-2xl font-bold text-green-600">{formatCurrency(tool.monthlyCost)}</div>
+                  <div className="text-sm text-green-700">{formatCurrency(tool.monthlyCost / tool.quantity)} per unit</div>
                   {tool.pricing && tool.pricing.standardPrice && (
                     <div className="text-xs text-gray-600 mt-1">
-                      Retail: {formatCurrency(tool.pricing.standardPrice * tool.quantity)}
+                      Retail: {formatCurrency(tool.pricing.standardPrice)} per unit
                     </div>
                   )}
                 </div>

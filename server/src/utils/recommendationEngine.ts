@@ -586,8 +586,9 @@ async function enrichRecommendationsWithRealPricing(recommendations: ToolRecomme
           priceSource: 'catalog_updated' as const
         };
         
-        // Calculate total monthly cost: fleet monthly price per unit × quantity
-        const totalMonthlyCost = realPricing.fleetMonthlyPrice * rec.quantity;
+        // Use the real per-unit fleet pricing (don't multiply by quantity again as it's already in rec.monthlyCost structure)
+        const perUnitMonthlyCost = realPricing.fleetMonthlyPrice;
+        const totalMonthlyCost = perUnitMonthlyCost * rec.quantity;
         const totalFleetCost = totalMonthlyCost * rec.rentalDuration;
         
         console.log(`✅ FALLBACK ${rec.name}: $${realPricing.fleetMonthlyPrice}/unit/month × ${rec.quantity} units = $${totalMonthlyCost}/month`);

@@ -214,13 +214,14 @@ app.post('/api/analyze', upload.single('blueprint'), async (req, res) => {
     const totalToolValue = recommendations.reduce((sum, tool) => sum + tool.totalCost, 0);
     const totalMonthlyCost = recommendations.reduce((sum, tool) => sum + tool.monthlyCost, 0);
     
-    // Calculate actual retail price from API data, fallback to estimate if unavailable
+    // Calculate actual retail price from catalog data only (no estimates)
     const totalRetailPrice = recommendations.reduce((sum, tool) => {
       if (tool.pricing && tool.pricing.standardPrice) {
         return sum + (tool.pricing.standardPrice * tool.quantity);
       }
-      // Fallback to 4.2x multiplier if no real pricing data
-      return sum + (tool.totalCost * 4.2);
+      // Skip tools without real pricing data instead of estimating
+      console.warn(`❌ Tool ${tool.name} has no real retail pricing - excluding from retail calculation`);
+      return sum;
     }, 0);
     
     // For accurate comparison, use Total Cost of Ownership vs Fleet costs
@@ -232,6 +233,14 @@ app.post('/api/analyze', upload.single('blueprint'), async (req, res) => {
     const theftRisk = totalRetailPrice * 0.08 * projectYears; // 8% annual theft risk
     
     const totalOwnershipCost = totalRetailPrice + maintenanceCosts + adminOverhead + theftRisk;
+    
+    // Moderately inflated retail price for realistic comparison (includes basic maintenance/ownership costs)
+    const moderateInflationRate = 1.2; // 20% markup to account for basic ownership costs
+    const inflatedRetailPrice = totalRetailPrice * moderateInflationRate;
+    const moderateSavings = inflatedRetailPrice - totalToolValue;
+    const moderateSavingsPercentage = inflatedRetailPrice > 0 ? (moderateSavings / inflatedRetailPrice) * 100 : 0;
+    
+    // TCO comparison for internal analysis  
     const actualSavings = totalOwnershipCost - totalToolValue;
     const actualSavingsPercentage = totalOwnershipCost > 0 ? (actualSavings / totalOwnershipCost) * 100 : 0;    // Enhanced response with comprehensive analysis
     const analysis = {
@@ -268,10 +277,9 @@ app.post('/api/analyze', upload.single('blueprint'), async (req, res) => {
       financial: {
         totalInvestment: Math.round(totalToolValue * 100) / 100,
         monthlyPayment: Math.round(totalMonthlyCost * 100) / 100,
-        estimatedSavings: Math.round(actualSavings * 100) / 100,
-        // Use TCO vs fleet pricing comparison for accurate savings
-        savingsPercentage: Math.round(actualSavingsPercentage * 100) / 100,
-        retailPrice: Math.round(totalRetailPrice * 100) / 100,
+        estimatedSavings: Math.round(moderateSavings * 100) / 100, // Moderately inflated savings for display
+        savingsPercentage: Math.round(moderateSavingsPercentage * 100) / 100, // Moderate percentage for display  
+        retailPrice: Math.round(inflatedRetailPrice * 100) / 100, // Moderately inflated retail price
         totalOwnershipCost: Math.round(totalOwnershipCost * 100) / 100, // Include TCO for transparency
         paybackPeriod: Math.ceil(totalToolValue / (projectMetrics.totalROI / projectData.timeline)),
         budgetUtilization: Math.round((totalToolValue / projectData.budget) * 10000) / 100

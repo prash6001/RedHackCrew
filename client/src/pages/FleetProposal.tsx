@@ -265,7 +265,7 @@ const FleetProposal = () => {
                   </td>
                   <td className="py-3 px-4 text-gray-600">{tool.category}</td>
                   <td className="py-3 px-4 text-right font-bold text-[#e30613]">
-                    ${(tool.monthlyCost || tool.monthlyRate || 0).toLocaleString()}
+                    ${((tool.monthlyCost || tool.monthlyRate || 0) / (tool.quantity || 1)).toLocaleString()}
                   </td>
                   <td className="py-3 px-4 text-right font-bold text-gray-900">
                     ${(tool.totalCost || 0).toLocaleString()}
@@ -280,7 +280,7 @@ const FleetProposal = () => {
               <tr className="border-t-2 border-gray-300 font-bold text-lg">
                 <td colSpan={2} className="py-4 px-4">Total Fleet Value</td>
                 <td className="py-4 px-4 text-right text-[#e30613]">
-                  ${(displayData.financial?.monthlyPayment || displayData.contract?.monthlyCost || 0).toLocaleString()}/mo
+                  ${((displayData.recommendations || displayData.tools || []).reduce((sum: number, tool: any) => sum + (tool.monthlyCost || tool.monthlyRate || 0), 0)).toLocaleString()}/mo
                 </td>
                 <td className="py-4 px-4 text-right text-gray-900">
                   ${(displayData.financial?.totalInvestment || displayData.contract?.totalCost || 0).toLocaleString()}
