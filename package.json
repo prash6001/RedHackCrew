@@ -1,0 +1,11 @@
+{
+  "name": "redhackcrew-catalog-processor",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Product catalog processing for RedHackCrew project",
+  "scripts": {
+    "process-catalog": "node scripts/processCatalog.js"
+  },
+  "dependencies": {},
+  "private": true
+}

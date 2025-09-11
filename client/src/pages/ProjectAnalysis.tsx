@@ -1,17 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, Zap, DollarSign, Shield, Clock, FileImage } from 'lucide-react';
+import { ArrowRight, Zap, DollarSign, Shield, Clock, FileImage, AlertCircle } from 'lucide-react';
 import ToolRecommendations from '../components/ToolRecommendations';
 import SavingsChart from '../components/SavingsChart';
 import ProductivityChart from '../components/ProductivityChart';
+import { api, handleApiError, withRetry, type ProjectFormData, type ProjectAnalysis } from '../utils/api';
 
 const ProjectAnalysis = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [analysisComplete, setAnalysisComplete] = useState(false);
-  const [recommendations, setRecommendations] = useState<any>(null);
+  const [analysisData, setAnalysisData] = useState<ProjectAnalysis | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const { selectedScopes, projectDetails, blueprint } = location.state || {};
+
+  // Helper function to map old project types to new API format
+  const mapProjectType = (oldType: string): ProjectFormData['projectType'] => {
+    const typeMap: Record<string, ProjectFormData['projectType']> = {
+      'residential': 'residential',
+      'commercial': 'commercial', 
+      'industrial': 'industrial',
+      'infrastructure': 'infrastructure',
+      'renovation': 'renovation',
+      'roadwork': 'roadwork'
+    };
+    return typeMap[oldType] || 'commercial';
+  };
+
+  // Helper function to convert budget ranges to numeric values
+  const convertBudgetToNumber = (budgetRange: string): number => {
+    const budgetMap: Record<string, number> = {
+      '25k-50k': 37500,      // Average of range
+      '50k-100k': 75000,
+      '100k-250k': 175000,
+      '250k-500k': 375000,
+      '500k-1m': 750000,
+      '1m-2.5m': 1750000,
+      '2.5m-5m': 3750000,
+      '5m+': 7500000         // Conservative estimate for 5M+
+    };
+    return budgetMap[budgetRange] || 500000; // Default to 500k if not found
+  };
 
   useEffect(() => {
     if ((!selectedScopes && !blueprint) || !projectDetails) {
@@ -19,253 +50,96 @@ const ProjectAnalysis = () => {
       return;
     }
 
-    // Simulate AI analysis
-    const timer = setTimeout(() => {
-      setAnalysisComplete(true);
-      setRecommendations(generateRecommendations(selectedScopes, projectDetails, blueprint));
-    }, blueprint ? 4000 : 3000); // Longer analysis time for blueprint
+    const performAnalysis = async () => {
+      setIsLoading(true);
+      setError(null);
 
+      try {
+        // Convert the old projectDetails format to new API format
+        const projectData: ProjectFormData = {
+          projectName: projectDetails.name || 'Unnamed Project',
+          projectType: mapProjectType(projectDetails.projectType || 'commercial'),
+          location: 'Location TBD', // HomePage doesn't collect location yet
+          laborCount: parseInt(projectDetails.teamSize) || 10,
+          timeline: parseInt(projectDetails.duration) || 12,
+          budget: convertBudgetToNumber(projectDetails.budget) || 500000,
+          existingTools: projectDetails.existingTools ? 
+            (typeof projectDetails.existingTools === 'string' ? 
+              projectDetails.existingTools.split(',').map(t => t.trim()).filter(t => t) : 
+              projectDetails.existingTools
+            ) : [],
+          specialRequirements: projectDetails.specialRequirements || '',
+          projectComplexity: (projectDetails.complexity as 'low' | 'medium' | 'high') || 'medium',
+          blueprint: blueprint
+        };
+
+        console.log('🔍 Sending project data to server:', projectData);
+
+        console.log('🔍 Starting server-side analysis...', projectData);
+
+        // Call the enhanced server API with retry logic
+        const analysis = await withRetry(() => api.analyzeProject(projectData), 3, 2000);
+
+        setAnalysisData(analysis);
+        setAnalysisComplete(true);
+
+        console.log('✅ Analysis completed successfully:', analysis);
+
+      } catch (error) {
+        console.error('❌ Analysis failed:', error);
+        const errorInfo = handleApiError(error);
+        setError(`Analysis failed: ${errorInfo.message}`);
+        
+        // Still show completion for fallback UI
+        setAnalysisComplete(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Add realistic loading delay for better UX
+    const timer = setTimeout(performAnalysis, blueprint ? 1500 : 1000);
     return () => clearTimeout(timer);
   }, [selectedScopes, projectDetails, blueprint, navigate]);
 
-  const generateRecommendations = (scopes: string[], details: any, blueprintFile?: File) => {
-    // AI-powered tool recommendation logic
-    const toolDatabase = getToolDatabase();
-    const recommendedTools: any[] = [];
-    
-    if (blueprintFile) {
-      // AI blueprint analysis - simulate intelligent scope detection
-      const detectedScopes = ['heavy-drilling', 'concrete-cutting', 'layout-leveling', 'fastening'];
-      detectedScopes.forEach(scope => {
-        const scopeTools = toolDatabase.filter(tool => tool.categories.includes(scope));
-        const optimizedTools = scopeTools.map(tool => ({
-          ...tool,
-          quantity: calculateQuantity(tool, details),
-          duration: parseInt(details.duration) || 12,
-          monthlyRate: Math.round(tool.fleetPrice / 12),
-          totalCost: tool.fleetPrice,
-          justification: generateJustification(tool, details),
-          advantages: generateAdvantages(tool)
-        }));
-        recommendedTools.push(...optimizedTools);
-      });
-    } else {
-      scopes.forEach(scope => {
-        const scopeTools = toolDatabase.filter(tool => tool.categories.includes(scope));
-        const optimizedTools = scopeTools.map(tool => ({
-          ...tool,
-          quantity: calculateQuantity(tool, details),
-          duration: parseInt(details.duration) || 12,
-          monthlyRate: Math.round(tool.fleetPrice / 12),
-          totalCost: tool.fleetPrice,
-          justification: generateJustification(tool, details),
-          advantages: generateAdvantages(tool)
-        }));
-        recommendedTools.push(...optimizedTools);
-      });
-    }
-
-    const totalRetailValue = recommendedTools.reduce((sum, tool) => sum + tool.retailPrice, 0);
-    const totalFleetValue = recommendedTools.reduce((sum, tool) => sum + tool.fleetPrice, 0);
-    const savings = totalRetailValue - totalFleetValue;
-    const savingsPercentage = (savings / totalRetailValue) * 100;
-
-    return {
-      tools: recommendedTools,
-      totalRetailValue,
-      totalFleetValue,
-      savings,
-      savingsPercentage,
-      analysisMethod: blueprintFile ? 'blueprint' : 'manual',
-      detectedScopes: blueprintFile ? ['Heavy Drilling', 'Concrete Cutting', 'Layout/Leveling', 'Fastening'] : null,
-      productivity: {
-        uptimeImprovement: blueprintFile ? 30 : 25, // Better optimization with blueprint
-        maintenanceReduction: 40,
-        projectEfficiency: blueprintFile ? 35 : 30
-      }
-    };
-  };
-
-  const calculateQuantity = (tool: any, details: any) => {
-    const teamSize = parseInt(details.teamSize) || 8;
-    const complexity = details.complexity;
-    const projectType = details.projectType;
-    
-    let baseQuantity = Math.ceil(teamSize / 4); // Base: 1 tool per 4 workers
-    
-    // Adjust based on project type
-    if (projectType === 'industrial' || projectType === 'infrastructure') {
-      baseQuantity = Math.ceil(baseQuantity * 1.5);
-    } else if (projectType === 'commercial') {
-      baseQuantity = Math.ceil(baseQuantity * 1.2);
-    }
-    
-    // Adjust based on complexity
-    if (complexity === 'high') {
-      baseQuantity = Math.ceil(baseQuantity * 1.3);
-    } else if (complexity === 'low') {
-      baseQuantity = Math.max(1, Math.ceil(baseQuantity * 0.8));
-    }
-    
-    return Math.max(1, baseQuantity);
-  };
-
-  const generateJustification = (tool: any, details: any) => {
-    const teamSize = parseInt(details.teamSize) || 8;
-    const duration = parseInt(details.duration) || 12;
-    const projectType = details.projectType;
-    
-    const justifications = [
-      `${teamSize > 10 ? 'Large' : teamSize > 5 ? 'Medium' : 'Small'} workforce requires ${teamSize > 10 ? 'multiple units' : 'adequate coverage'} for efficiency`,
-      `${duration > 24 ? 'Long-term' : duration > 12 ? 'Medium-term' : 'Short-term'} project benefits from reliable fleet vs. purchase`,
-      `${projectType === 'industrial' ? 'Industrial demands' : projectType === 'commercial' ? 'Commercial requirements' : 'Project specifications'} require professional-grade tools`
-    ];
-    
-    return justifications;
-  };
-
-  const generateAdvantages = (tool: any) => {
-    const advantages = [
-      'Superior safety features',
-      '30% higher productivity',
-      'Reduced maintenance time',
-      'Latest technology integration',
-      'Professional support included',
-      'Predictable operating costs'
-    ];
-    
-    return advantages.slice(0, 3); // Return 3 random advantages
-  };
-  const getToolDatabase = () => {
-    return [
-      {
-        id: 'te-3000-avr',
-        name: 'TE 3000-AVR',
-        category: 'Heavy Drilling',
-        image: 'https://images.pexels.com/photos/1216589/pexels-photo-1216589.jpeg?auto=compress&cs=tinysrgb&w=300&h=200&fit=crop',
-        hiltiUrl: 'https://www.hilti.com/c/CLS_POWER_TOOLS_7124/CLS_ROTARY_HAMMERS_7124/CLS_COMBIHAMMERS_7124/r4574',
-        retailPrice: 2899,
-        fleetPrice: 1739,
-        categories: ['heavy-drilling', 'demolition'],
-        specs: {
-          power: '1500W',
-          weight: '11.2 kg',
-          impactEnergy: '41 J'
-        },
-        description: 'Professional rotary hammer for heavy-duty drilling and chiseling applications'
-      },
-      {
-        id: 'dd-120',
-        name: 'DD 120',
-        category: 'Diamond Coring',
-        image: 'https://images.pexels.com/photos/1216589/pexels-photo-1216589.jpeg?auto=compress&cs=tinysrgb&w=300&h=200&fit=crop',
-        hiltiUrl: 'https://www.hilti.com/c/CLS_POWER_TOOLS_7124/CLS_DIAMOND_DRILLING_7124/r4575',
-        retailPrice: 3299,
-        fleetPrice: 1979,
-        categories: ['diamond-coring'],
-        specs: {
-          power: '2000W',
-          maxDiameter: '120mm',
-          weight: '8.5 kg'
-        },
-        description: 'High-performance diamond core drilling system for precise concrete coring'
-      },
-      {
-        id: 'dsh-700-x',
-        name: 'DSH 700-X',
-        category: 'Cutting',
-        image: 'https://images.pexels.com/photos/1216589/pexels-photo-1216589.jpeg?auto=compress&cs=tinysrgb&w=300&h=200&fit=crop',
-        hiltiUrl: 'https://www.hilti.com/c/CLS_POWER_TOOLS_7124/CLS_HANDHELD_SAWS_7124/r4576',
-        retailPrice: 1899,
-        fleetPrice: 1139,
-        categories: ['concrete-cutting'],
-        specs: {
-          power: '2300W',
-          bladeDiameter: '300mm',
-          cuttingDepth: '100mm'
-        },
-        description: 'Electric handheld saw for cutting concrete, stone and other masonry materials'
-      },
-      {
-        id: 'sco-6-22',
-        name: 'SCO 6-22',
-        category: 'Cordless Cutting',
-        image: 'https://images.pexels.com/photos/1216589/pexels-photo-1216589.jpeg?auto=compress&cs=tinysrgb&w=300&h=200&fit=crop',
-        hiltiUrl: 'https://www.hilti.com/c/CLS_POWER_TOOLS_7124/CLS_CORDLESS_SYSTEMS_7124/r4577',
-        retailPrice: 899,
-        fleetPrice: 539,
-        categories: ['indoor-cutting'],
-        specs: {
-          voltage: '22V',
-          bladeDiameter: '150mm',
-          runtime: '45 min'
-        },
-        description: 'Cordless cut-off saw for indoor cutting applications with minimal dust'
-      },
-      {
-        id: 'pm-40-mg',
-        name: 'PM 40-MG',
-        category: 'Layout',
-        image: 'https://images.pexels.com/photos/1216589/pexels-photo-1216589.jpeg?auto=compress&cs=tinysrgb&w=300&h=200&fit=crop',
-        hiltiUrl: 'https://www.hilti.com/c/CLS_MEASURING_SYSTEMS_7125/CLS_LASER_LEVELS_7125/r4578',
-        retailPrice: 1299,
-        fleetPrice: 779,
-        categories: ['layout-leveling'],
-        specs: {
-          range: '40m',
-          accuracy: '±1.5mm',
-          laserClass: 'Class 2'
-        },
-        description: 'Multi-line laser for accurate layout and leveling in construction projects'
-      },
-      {
-        id: 'gx-3',
-        name: 'GX 3',
-        category: 'Fastening',
-        image: 'https://images.pexels.com/photos/1216589/pexels-photo-1216589.jpeg?auto=compress&cs=tinysrgb&w=300&h=200&fit=crop',
-        hiltiUrl: 'https://www.hilti.com/c/CLS_FASTENING_SYSTEMS_7126/CLS_DIRECT_FASTENING_7126/r4579',
-        retailPrice: 449,
-        fleetPrice: 269,
-        categories: ['fastening'],
-        specs: {
-          nailLength: '15-40mm',
-          weight: '1.8 kg',
-          capacity: '1100 nails'
-        },
-        description: 'Gas-actuated fastening tool for quick and reliable fastening to concrete and steel'
-      }
-    ];
-  };
-
-  if (!analysisComplete) {
+  if (!analysisComplete || isLoading) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#e30613] mx-auto mb-8"></div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            Analyzing Your Project Requirements
+            {blueprint ? 'AI Blueprint Analysis in Progress' : 'Analyzing Your Project Requirements'}
           </h1>
           <p className="text-xl text-gray-600 mb-8">
-            Our AI is processing your scope of work and generating optimal tool recommendations...
+            {analysisData?.analysis.method === 'bedrock' 
+              ? 'AWS Bedrock Claude 3.5 Sonnet is generating intelligent recommendations...' 
+              : 'Our enhanced AI system is processing your scope and generating optimal tool recommendations...'
+            }
           </p>
           <div className="bg-white rounded-lg p-8 shadow-lg">
             <div className="space-y-4">
               <div className="flex items-center text-green-600">
                 <Zap className="h-5 w-5 mr-3" />
-                <span>Matching tools to project requirements</span>
+                <span>Matching tools to project requirements with AI precision</span>
               </div>
               <div className="flex items-center text-blue-600">
                 <DollarSign className="h-5 w-5 mr-3" />
-                <span>Calculating cost optimizations</span>
+                <span>Calculating comprehensive TCO and ROI analysis</span>
               </div>
               <div className="flex items-center text-purple-600">
                 <Shield className="h-5 w-5 mr-3" />
-                <span>Determining service coverage needs</span>
+                <span>Determining fleet management service coverage needs</span>
               </div>
               <div className="flex items-center text-orange-600">
                 <Clock className="h-5 w-5 mr-3" />
-                <span>Optimizing fleet sizing and mix</span>
+                <span>Optimizing fleet sizing, mix, and productivity metrics</span>
               </div>
+              {blueprint && (
+                <div className="flex items-center text-indigo-600">
+                  <FileImage className="h-5 w-5 mr-3" />
+                  <span>Processing blueprint for intelligent scope detection</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -273,19 +147,66 @@ const ProjectAnalysis = () => {
     );
   }
 
+  // Show error state if analysis failed
+  if (error && !analysisData) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center">
+          <div className="bg-red-50 rounded-lg p-8 shadow-lg">
+            <AlertCircle className="h-16 w-16 text-red-600 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-red-900 mb-4">
+              Analysis Failed
+            </h1>
+            <p className="text-red-700 mb-6">{error}</p>
+            <div className="space-y-2 text-sm text-red-600">
+              <p>Please check that the server is running and try again.</p>
+              <p>Server should be available at: <code>http://localhost:3002</code></p>
+            </div>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-6 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Retry Analysis
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Use analysisData if available, otherwise show basic fallback
+  const displayData = analysisData || {
+    project: { name: projectDetails?.name || 'Project', hasBlueprint: !!blueprint },
+    analysis: { method: 'enhanced_rules' as const, model: 'Enhanced Fleet Management Engine' },
+    financial: { totalInvestment: 0, estimatedSavings: 0, savingsPercentage: 0, budgetUtilization: 0 },
+    metrics: { productivityIncrease: 0.25, downtimeReduction: 0.30 },
+    recommendations: []
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Project Analysis Complete
+          {analysisData ? 'Project Analysis Complete' : 'Analysis Results'}
         </h1>
         <p className="text-xl text-gray-600">
-          {recommendations.analysisMethod === 'blueprint' ? 'AI Blueprint Analysis' : 'AI-powered recommendations'} for <strong>{projectDetails.name}</strong>
+          {displayData.analysis.method === 'bedrock' ? '🤖 AWS Bedrock AI Analysis' : '📊 Enhanced AI Analysis'} for <strong>{displayData.project.name}</strong>
         </p>
-        {recommendations.analysisMethod === 'blueprint' && (
+        {displayData.project.hasBlueprint && (
           <div className="mt-4 inline-flex items-center px-4 py-2 bg-purple-100 text-purple-800 rounded-full text-sm">
             <FileImage className="h-4 w-4 mr-2" />
-            Detected Scopes: {recommendations.detectedScopes.join(', ')}
+            Blueprint processed with {displayData.analysis.method === 'bedrock' ? 'Claude 3.5 Sonnet' : 'Enhanced AI'}
+          </div>
+        )}
+        {analysisData && (
+          <div className="mt-4 text-sm text-gray-500">
+            Analysis Method: {analysisData.analysis.model}
+          </div>
+        )}
+        {error && (
+          <div className="mt-4 inline-flex items-center px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full text-sm">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            Using fallback analysis due to server issues
           </div>
         )}
       </div>
@@ -294,29 +215,29 @@ const ProjectAnalysis = () => {
       <div className="grid md:grid-cols-4 gap-6 mb-12">
         <div className="bg-white rounded-xl p-6 shadow-lg text-center">
           <div className="text-3xl font-bold text-[#e30613] mb-2">
-            ${recommendations.savings.toLocaleString()}
+            ${displayData.financial.estimatedSavings.toLocaleString()}
           </div>
           <div className="text-sm text-gray-600">Total Savings</div>
           <div className="text-lg font-semibold text-green-600">
-            {recommendations.savingsPercentage.toFixed(1)}% off retail
+            {displayData.financial.savingsPercentage.toFixed(1)}% off retail
           </div>
         </div>
         
         <div className="bg-white rounded-xl p-6 shadow-lg text-center">
           <div className="text-3xl font-bold text-blue-600 mb-2">
-            {recommendations.tools.length}
+            {displayData.recommendations.length}
           </div>
           <div className="text-sm text-gray-600">Recommended Tools</div>
           <div className="text-lg font-semibold text-gray-800">
-            Optimized Fleet
+            {displayData.analysis.method === 'bedrock' ? 'AI-Optimized Fleet' : 'Enhanced Fleet'}
           </div>
         </div>
         
         <div className="bg-white rounded-xl p-6 shadow-lg text-center">
           <div className="text-3xl font-bold text-green-600 mb-2">
-            +{recommendations.productivity.uptimeImprovement}%
+            +{Math.round(displayData.metrics.productivityIncrease * 100)}%
           </div>
-          <div className="text-sm text-gray-600">Uptime Improvement</div>
+          <div className="text-sm text-gray-600">Productivity Improvement</div>
           <div className="text-lg font-semibold text-gray-800">
             vs. Owned Tools
           </div>
@@ -324,34 +245,53 @@ const ProjectAnalysis = () => {
         
         <div className="bg-white rounded-xl p-6 shadow-lg text-center">
           <div className="text-3xl font-bold text-purple-600 mb-2">
-            -{recommendations.productivity.maintenanceReduction}%
+            -{Math.round(displayData.metrics.downtimeReduction * 100)}%
           </div>
-          <div className="text-sm text-gray-600">Maintenance Costs</div>
+          <div className="text-sm text-gray-600">Downtime Reduction</div>
           <div className="text-lg font-semibold text-gray-800">
-            Full Service Included
+            Fleet Management Service
           </div>
         </div>
       </div>
 
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-8 mb-12">
-        <SavingsChart recommendations={recommendations} />
-        <ProductivityChart recommendations={recommendations} />
+        <SavingsChart recommendations={displayData} />
+        <ProductivityChart recommendations={displayData} />
       </div>
 
       {/* Tool Recommendations */}
-      <ToolRecommendations tools={recommendations.tools} />
+      <ToolRecommendations tools={displayData.recommendations} />
 
       {/* Generate Proposal Button */}
       <div className="text-center mt-12">
         <button
-          onClick={() => navigate('/proposal', { state: { recommendations, projectDetails, selectedScopes, blueprint } })}
+          onClick={() => navigate('/proposal', { 
+            state: { 
+              analysisData: displayData, 
+              recommendations: displayData.recommendations,
+              projectDetails, 
+              selectedScopes, 
+              blueprint,
+              serverConnected: !!analysisData // Pass connection status
+            } 
+          })}
           className="inline-flex items-center px-8 py-4 bg-[#e30613] text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
         >
-          Generate Fleet Proposal
+          Generate {analysisData ? 'AI-Enhanced' : 'Enhanced'} Fleet Proposal
           <ArrowRight className="ml-2 h-5 w-5" />
         </button>
       </div>
+      
+      {/* Server Status Indicator */}
+      {analysisData && (
+        <div className="text-center mt-6">
+          <div className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+            <div className="w-2 h-2 bg-green-600 rounded-full mr-2"></div>
+            {analysisData.analysis.method === 'bedrock' ? 'AWS Bedrock Connected' : 'Enhanced Server Connected'}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

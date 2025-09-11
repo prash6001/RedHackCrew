@@ -4,25 +4,29 @@ import { Download, Printer, Mail, Calendar, DollarSign, Shield, CheckCircle, Fil
 
 const FleetProposal = () => {
   const location = useLocation();
-  const { recommendations, projectDetails, selectedScopes, blueprint } = location.state || {};
+  const { analysisData, recommendations, projectDetails, selectedScopes, blueprint, serverConnected } = location.state || {};
   const [proposalGenerated, setProposalGenerated] = useState(false);
+
+  // Use analysisData from server if available, otherwise fallback to recommendations
+  const displayData = analysisData || recommendations || {};
+  const totalFleetValue = displayData.financial?.totalInvestment || 0;
 
   const contractTerms = [
     {
       duration: '12 months',
-      monthlyRate: Math.round(recommendations?.totalFleetValue / 12) || 0,
+      monthlyRate: Math.round(totalFleetValue / 12) || 0,
       setupFee: 500,
       savings: 'Standard'
     },
     {
       duration: '24 months',
-      monthlyRate: Math.round((recommendations?.totalFleetValue * 0.85) / 24) || 0,
+      monthlyRate: Math.round((totalFleetValue * 0.85) / 24) || 0,
       setupFee: 250,
       savings: 'Enhanced'
     },
     {
       duration: '36 months',
-      monthlyRate: Math.round((recommendations?.totalFleetValue * 0.75) / 36) || 0,
+      monthlyRate: Math.round((totalFleetValue * 0.75) / 36) || 0,
       setupFee: 0,
       savings: 'Maximum'
     }
@@ -46,7 +50,7 @@ const FleetProposal = () => {
     }, 1000);
   };
 
-  if (!recommendations) {
+  if (!displayData || (!displayData.financial && !displayData.recommendations)) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
         <p className="text-xl text-gray-600">No proposal data available. Please start from the beginning.</p>
@@ -94,7 +98,7 @@ const FleetProposal = () => {
           <div className="text-center p-4 bg-red-50 rounded-lg">
             <DollarSign className="h-8 w-8 text-[#e30613] mx-auto mb-2" />
             <div className="text-2xl font-bold text-[#e30613]">
-              ${recommendations.savings.toLocaleString()}
+              ${(displayData.financial?.estimatedSavings || 0).toLocaleString()}
             </div>
             <div className="text-sm text-gray-600">Total Savings</div>
           </div>
@@ -105,13 +109,15 @@ const FleetProposal = () => {
           </div>
           <div className="text-center p-4 bg-green-50 rounded-lg">
             <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-green-600">{recommendations.tools.length}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {displayData.recommendations?.length || displayData.tools?.length || 0}
+            </div>
             <div className="text-sm text-gray-600">Optimized Tools</div>
           </div>
           <div className="text-center p-4 bg-purple-50 rounded-lg">
             <Calendar className="h-8 w-8 text-purple-600 mx-auto mb-2" />
             <div className="text-2xl font-bold text-purple-600">
-              {projectDetails.duration || '12'}
+              {projectDetails?.duration || displayData.project?.timeline || '12'}
             </div>
             <div className="text-sm text-gray-600">Week Duration</div>
           </div>
@@ -238,33 +244,34 @@ const FleetProposal = () => {
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-4">Tool</th>
                 <th className="text-left py-3 px-4">Category</th>
-                <th className="text-right py-3 px-4">Retail Price</th>
-                <th className="text-right py-3 px-4">Fleet Price</th>
-                <th className="text-right py-3 px-4">Savings</th>
+                <th className="text-right py-3 px-4">Monthly Cost</th>
+                <th className="text-right py-3 px-4">Total Cost</th>
+                <th className="text-right py-3 px-4">Quantity</th>
               </tr>
             </thead>
             <tbody>
-              {recommendations.tools.map((tool: any) => (
+              {(displayData.recommendations || displayData.tools || []).map((tool: any) => (
                 <tr key={tool.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-3">
-                      <img
-                        src={tool.image}
-                        alt={tool.name}
-                        className="w-12 h-12 object-cover rounded"
-                      />
-                      <span className="font-medium">{tool.name}</span>
+                      <div className="w-12 h-12 bg-gradient-to-br from-red-50 to-red-100 rounded flex items-center justify-center">
+                        <span className="text-[#e30613] font-bold text-xs">{tool.category?.[0] || 'T'}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium">{tool.name}</span>
+                        <div className="text-xs text-gray-500">{tool.model || tool.description}</div>
+                      </div>
                     </div>
                   </td>
                   <td className="py-3 px-4 text-gray-600">{tool.category}</td>
-                  <td className="py-3 px-4 text-right text-gray-500 line-through">
-                    ${tool.retailPrice.toLocaleString()}
-                  </td>
                   <td className="py-3 px-4 text-right font-bold text-[#e30613]">
-                    ${tool.fleetPrice.toLocaleString()}
+                    ${(tool.monthlyCost || tool.monthlyRate || 0).toLocaleString()}
                   </td>
-                  <td className="py-3 px-4 text-right font-bold text-green-600">
-                    ${(tool.retailPrice - tool.fleetPrice).toLocaleString()}
+                  <td className="py-3 px-4 text-right font-bold text-gray-900">
+                    ${(tool.totalCost || 0).toLocaleString()}
+                  </td>
+                  <td className="py-3 px-4 text-right font-medium">
+                    {tool.quantity || 1}
                   </td>
                 </tr>
               ))}
@@ -272,14 +279,14 @@ const FleetProposal = () => {
             <tfoot>
               <tr className="border-t-2 border-gray-300 font-bold text-lg">
                 <td colSpan={2} className="py-4 px-4">Total Fleet Value</td>
-                <td className="py-4 px-4 text-right text-gray-500 line-through">
-                  ${recommendations.totalRetailValue.toLocaleString()}
-                </td>
                 <td className="py-4 px-4 text-right text-[#e30613]">
-                  ${recommendations.totalFleetValue.toLocaleString()}
+                  ${(displayData.financial?.monthlyPayment || displayData.contract?.monthlyCost || 0).toLocaleString()}/mo
+                </td>
+                <td className="py-4 px-4 text-right text-gray-900">
+                  ${(displayData.financial?.totalInvestment || displayData.contract?.totalCost || 0).toLocaleString()}
                 </td>
                 <td className="py-4 px-4 text-right text-green-600">
-                  ${recommendations.savings.toLocaleString()}
+                  Save ${(displayData.financial?.estimatedSavings || 0).toLocaleString()}
                 </td>
               </tr>
             </tfoot>

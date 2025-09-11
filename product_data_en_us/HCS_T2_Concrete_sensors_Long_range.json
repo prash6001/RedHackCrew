@@ -1,0 +1,23 @@
+{
+  "tag_heading": "na",
+  "tag_public_url": "https://www.hilti.com/c/CLS_MEA_TOOL_INSERT_7127/CLS_CONCRETE_SCANNERS_SENSORS_7127/r13232455",
+  "content": "HCS T2 Concrete sensors (Long range) Automatic concrete maturity sensors for monitoring temperature and strength using remote data collection ### Categories: Home > Products > Measuring tools & scanners > Concrete scanners and sensors- - - ### FEATURES:Features More efficient scheduling – concrete maturity sensors put real-time curing data at your fingertips to better plan the day’s work Avoid concrete testing delays – shave up to 1-2 days off every pour cycle by switching to live curing data Optimize rental costs – rent equipment only once your concrete is strong enough Easy to use – simply attach the concrete sensors to rebar using cable ties before you pour, and see the results from anywhere using mobile Apps or desktop software Long-range data transmission – concrete curing progress is delivered automatically and in real time directly to the monitoring software, helping to minimize site visits to check concrete construction progress (Hilti Concrete Sensor Gateway required) Applications Concrete strength monitoring – know immediately when formwork stripping can take place, and when rental equipment is needed Concrete temperature monitoring – know when to mitigate against extreme temperatures For monitoring strength, a laboratory calibration service may be required. Contact your Hilti Sales Representative for further information Requires the rental of a Hilti Gateway for the data collection. Your Hilti sales representative will arrange one on request Long-range sensors monitor the concrete continuously and deliver real-time information automatically to cloud-based software which you can access from anywhere. For smaller projects, or when continuous remote monitoring is not needed, we recommend HCS T1 Bluetooth®-based concrete sensors ### TECHNICAL DATA: Monitoring: Strength and temperature Data collection: Automatic via Hilti Gateway Data collection frequency: Strength and temperature: every 15 minutes for the first 60 days Technical Data | Monitoring | Strength and temperature | Data collection | Automatic via Hilti Gateway | Data collection frequency | Strength and temperature: every 15 minutes for the first 60 days | Standards | Complies with ASTM C1074 | Wireless signal range (up to) | 1000 ft | Temperature - range | -40 °F - 185 °F ### ITEMS- 2300660 - Concrete sensor HCS T2-B15 - Package Size 1 pc - 2300658 - Concrete sensor HCS T2-B3 - Package Size 1 pc - 2300659 - Concrete sensor HCS T2-B8 - Package Size 1 pc - 2300657 - Concrete sensor HCS T2 - Package Size 1 pc",
+  "tag_name": "HCS T2 Concrete sensors (Long range)",
+  "tag_description": "Automatic concrete maturity sensors for monitoring temperature and strength using remote data collection",
+  "tag_source": "HOL: Products",
+  "tag_author": "na",
+  "tag_created_at": "na",
+  "tag_ingestion_date": "2025-05-20T13:30:40.997788",
+  "tag_categories_leaf": "Concrete scanners and sensors",
+  "tag_categories_branch": "Home > Products > Measuring tools & scanners > Concrete scanners and sensors",
+  "tag_item_numbers": "['2300660', '2300658', '2300659', '2300657']",
+  "tag_related_files": "[{'category': 'Brochure', 'url': 'https://productdata.hilti.com/APQ_HC_RAW/ASSET_DOC_LOC_13359886.pdf', 'description': 'Download HCS - Jobsites finished faster'}, {'category': 'Brochure', 'url': 'https://productdata.hilti.com/APQ_HC_RAW/ASSET_DOC_LOC_19393205.pdf', 'description': 'Download Concrete Sensors Portfolio HNA EN'}, {'category': 'Documentation', 'url': 'https://productdata.hilti.com/APQ_HC_RAW/ASSET_DOC_LOC_13558564.pdf', 'description': 'Download HCS Sensor & Gateway Instructions for Use'}]",
+  "tag_sidelinks": "na",
+  "tag_language": "en",
+  "tag_country": "us",
+  "tag_keywords": "na",
+  "tag_page_number": "na",
+  "tag_sku": "r13232455",
+  "tag_file_type": "product_page",
+  "tag_file_extension": "html"
+}

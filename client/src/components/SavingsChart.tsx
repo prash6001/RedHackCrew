@@ -2,14 +2,24 @@ import React from 'react';
 import { BarChart3, TrendingDown } from 'lucide-react';
 
 interface SavingsChartProps {
-  recommendations: any;
+  recommendations: {
+    financial: {
+      totalInvestment: number;
+      estimatedSavings: number;
+      savingsPercentage: number;
+    };
+  };
 }
 
 const SavingsChart: React.FC<SavingsChartProps> = ({ recommendations }) => {
+  const retailPrice = recommendations.financial.totalInvestment + recommendations.financial.estimatedSavings;
+  const fleetPrice = recommendations.financial.totalInvestment;
+  const savings = recommendations.financial.estimatedSavings;
+  
   const data = [
-    { label: 'Retail Price', value: recommendations.totalRetailValue, color: '#ef4444' },
-    { label: 'Fleet Price', value: recommendations.totalFleetValue, color: '#e30613' },
-    { label: 'Your Savings', value: recommendations.savings, color: '#22c55e' }
+    { label: 'Retail Price', value: retailPrice, color: '#ef4444' },
+    { label: 'Fleet Price', value: fleetPrice, color: '#e30613' },
+    { label: 'Your Savings', value: savings, color: '#22c55e' }
   ];
 
   const maxValue = Math.max(...data.map(d => d.value));
@@ -49,7 +59,7 @@ const SavingsChart: React.FC<SavingsChartProps> = ({ recommendations }) => {
           <span className="font-semibold">Total Savings Breakdown</span>
         </div>
         <div className="text-sm text-green-700">
-          <p>• Fleet pricing reduces costs by {recommendations.savingsPercentage.toFixed(1)}%</p>
+          <p>• Fleet pricing reduces costs by {recommendations.financial.savingsPercentage.toFixed(1)}%</p>
           <p>• Service & maintenance included</p>
           <p>• No upfront capital investment required</p>
           <p>• Predictable monthly payments</p>

@@ -4,21 +4,20 @@ import { ExternalLink, Zap, Weight, Settings, Package, Clock, DollarSign, CheckC
 interface Tool {
   id: string;
   name: string;
-  category: string;
-  image: string;
+  model: string;
   description: string;
-  hiltiUrl: string;
-  retailPrice: number;
-  fleetPrice: number;
   quantity: number;
-  duration: number;
-  monthlyRate: number;
+  monthlyCost: number;
   totalCost: number;
+  rentalDuration: number;
   justification: string[];
-  advantages: string[];
-  specs: {
-    [key: string]: string;
-  };
+  category: string;
+  productUrl: string;
+  specifications: string[];
+  competitiveAdvantages?: string[];
+  roi?: number;
+  utilizationRate?: number;
+  priority?: 'high' | 'medium' | 'standard';
 }
 
 interface ToolRecommendationsProps {
@@ -26,8 +25,13 @@ interface ToolRecommendationsProps {
 }
 
 const ToolRecommendations: React.FC<ToolRecommendationsProps> = ({ tools }) => {
-  const getDiscountPercentage = (retail: number, fleet: number) => {
-    return Math.round(((retail - fleet) / retail) * 100);
+  const getDiscountPercentage = (totalCost: number, monthlyCost: number, duration: number) => {
+    const fleetTotalCost = monthlyCost * duration;
+    const retailPrice = totalCost;
+    if (retailPrice > 0) {
+      return Math.round(((retailPrice - fleetTotalCost) / retailPrice) * 100);
+    }
+    return 25; // Default discount percentage
   };
 
   return (
@@ -43,13 +47,14 @@ const ToolRecommendations: React.FC<ToolRecommendationsProps> = ({ tools }) => {
               {/* Tool Image and Basic Info */}
               <div className="space-y-4">
                 <div className="relative">
-                  <img
-                    src={tool.image}
-                    alt={tool.name}
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
+                  <div className="w-full h-48 bg-gradient-to-br from-red-50 to-red-100 rounded-lg flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-[#e30613] mb-2">{tool.category}</div>
+                      <div className="text-sm text-gray-600">{tool.model}</div>
+                    </div>
+                  </div>
                   <div className="absolute top-2 right-2 bg-[#e30613] text-white px-2 py-1 rounded text-sm font-bold">
-                    -{getDiscountPercentage(tool.retailPrice, tool.fleetPrice)}%
+                    -{getDiscountPercentage(tool.totalCost, tool.monthlyCost, tool.rentalDuration)}%
                   </div>
                 </div>
                 
@@ -57,7 +62,7 @@ const ToolRecommendations: React.FC<ToolRecommendationsProps> = ({ tools }) => {
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-bold text-xl text-gray-900">{tool.name}</h3>
                     <a
-                      href={tool.hiltiUrl}
+                      href={tool.productUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[#e30613] hover:text-red-700 transition-colors"
@@ -72,13 +77,10 @@ const ToolRecommendations: React.FC<ToolRecommendationsProps> = ({ tools }) => {
                 {/* Specifications */}
                 <div className="space-y-2">
                   <h4 className="font-semibold text-gray-800">Specifications</h4>
-                  {Object.entries(tool.specs).map(([key, value]) => (
-                    <div key={key} className="flex items-center text-sm">
-                      {key.toLowerCase().includes('power') && <Zap className="h-3 w-3 mr-2 text-yellow-500" />}
-                      {key.toLowerCase().includes('weight') && <Weight className="h-3 w-3 mr-2 text-gray-500" />}
-                      {!key.toLowerCase().includes('power') && !key.toLowerCase().includes('weight') && <Settings className="h-3 w-3 mr-2 text-blue-500" />}
-                      <span className="text-gray-600">{key}:</span>
-                      <span className="ml-1 font-medium">{value}</span>
+                  {tool.specifications.map((spec, index) => (
+                    <div key={index} className="flex items-center text-sm">
+                      <Settings className="h-3 w-3 mr-2 text-blue-500" />
+                      <span className="text-gray-700">{spec}</span>
                     </div>
                   ))}
                 </div>
@@ -102,7 +104,7 @@ const ToolRecommendations: React.FC<ToolRecommendationsProps> = ({ tools }) => {
                       <Clock className="h-5 w-5 text-purple-600 mr-2" />
                       <span className="text-sm font-medium text-purple-800">Duration</span>
                     </div>
-                    <div className="text-2xl font-bold text-purple-600">{tool.duration} weeks</div>
+                    <div className="text-2xl font-bold text-purple-600">{tool.rentalDuration} months</div>
                   </div>
                 </div>
                 
@@ -111,14 +113,14 @@ const ToolRecommendations: React.FC<ToolRecommendationsProps> = ({ tools }) => {
                     <DollarSign className="h-5 w-5 text-green-600 mr-2" />
                     <span className="text-sm font-medium text-green-800">Monthly Cost</span>
                   </div>
-                  <div className="text-2xl font-bold text-green-600">${(tool.monthlyRate * tool.quantity).toLocaleString()}</div>
-                  <div className="text-sm text-green-700">${tool.monthlyRate.toLocaleString()} per unit</div>
+                  <div className="text-2xl font-bold text-green-600">${(tool.monthlyCost * tool.quantity).toLocaleString()}</div>
+                  <div className="text-sm text-green-700">${tool.monthlyCost.toLocaleString()} per unit</div>
                 </div>
                 
                 <div className="bg-[#e30613] text-white p-4 rounded-lg">
                   <div className="text-sm font-medium mb-1">Total Fleet Cost</div>
                   <div className="text-3xl font-bold">${(tool.totalCost * tool.quantity).toLocaleString()}</div>
-                  <div className="text-sm opacity-90">vs ${(tool.retailPrice * tool.quantity).toLocaleString()} retail</div>
+                  <div className="text-sm opacity-90">Total fleet cost</div>
                 </div>
               </div>
               
@@ -139,7 +141,7 @@ const ToolRecommendations: React.FC<ToolRecommendationsProps> = ({ tools }) => {
                 <div>
                   <h4 className="font-semibold text-gray-800 text-lg mb-3">Competitive Advantages</h4>
                   <div className="space-y-2">
-                    {tool.advantages.map((advantage, index) => (
+                    {(tool.competitiveAdvantages || []).map((advantage, index) => (
                       <div key={index} className="flex items-start space-x-2">
                         <div className="w-2 h-2 bg-[#e30613] rounded-full mt-2 flex-shrink-0"></div>
                         <span className="text-sm text-gray-700">{advantage}</span>
