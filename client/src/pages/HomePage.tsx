@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -13,6 +13,9 @@ import BlueprintUploader from "../components/BlueprintUploader";
 const HomePage = () => {
   const navigate = useNavigate();
   const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
+  const [scopeDetails, setScopeDetails] = useState<
+    { id: string; description: string }[]
+  >([]);
   const [blueprint, setBlueprint] = useState<File | null>(null);
   const [projectDetails, setProjectDetails] = useState({
     name: "",
@@ -24,21 +27,65 @@ const HomePage = () => {
     complexity: "medium",
     existingTools: "",
   });
-  const [geminiResult, setGeminiResult] = useState<any>(null);
+  const [geminiResult, setGeminiResult] = useState<unknown>(null);
+
+  const handleScopeDetailChange = (scopeId: string, description: string) => {
+    setScopeDetails((prev) => {
+      const existing = prev.find((detail) => detail.id === scopeId);
+      if (existing) {
+        return prev.map((detail) =>
+          detail.id === scopeId ? { ...detail, description } : detail
+        );
+      } else {
+        return [...prev, { id: scopeId, description }];
+      }
+    });
+  };
+
+  const handleScopeChange = (scopes: string[]) => {
+    setSelectedScopes(scopes);
+    // Remove scope details for unselected scopes
+    setScopeDetails((prev) =>
+      prev.filter((detail) => scopes.includes(detail.id))
+    );
+  };
+
+  const validateScopeDetails = () => {
+    if (selectedScopes.length === 0) return true; // No scopes selected, validation passes
+    return selectedScopes.every((scopeId) => {
+      const detail = scopeDetails.find((d) => d.id === scopeId);
+      return detail && detail.description.trim().length > 0;
+    });
+  };
 
   const handleStartAnalysis = () => {
     const hasRequiredData = blueprint || selectedScopes.length > 0;
-    if (hasRequiredData && projectDetails.name) {
-      const combined = {
-        gemini: geminiResult,
+    const scopeDetailsValid = validateScopeDetails();
+    if (hasRequiredData && scopeDetailsValid && projectDetails.name) {
+      const combined: {
+        projectDetails: typeof projectDetails;
+        gemini?: unknown;
+        scopeDetails?: { id: string; description: string }[];
+      } = {
         projectDetails,
-        selectedScopes,
       };
-      console.log("--- Combined Gemini Result + Project Details ---");
+
+      // Only add gemini if it's not null
+      if (geminiResult !== null) {
+        combined.gemini = geminiResult;
+      }
+
+      // Only add scopeDetails if it has content
+      if (scopeDetails && scopeDetails.length > 0) {
+        combined.scopeDetails = scopeDetails;
+      }
+
+      console.log("--- Combined Project Details and Additional Data ---");
       console.log(combined);
       navigate("/analysis", {
         state: {
           selectedScopes,
+          scopeDetails,
           projectDetails,
           blueprint,
         },
@@ -277,7 +324,9 @@ const HomePage = () => {
                   </h3>
                   <ScopeOfWorkSelector
                     selectedScopes={selectedScopes}
-                    onScopeChange={setSelectedScopes}
+                    scopeDetails={scopeDetails}
+                    onScopeChange={handleScopeChange}
+                    onScopeDetailChange={handleScopeDetailChange}
                   />
                 </div>
               </>
@@ -297,7 +346,8 @@ const HomePage = () => {
             disabled={
               (!blueprint && selectedScopes.length === 0) ||
               !projectDetails.name ||
-              !projectDetails.projectType
+              !projectDetails.projectType ||
+              !validateScopeDetails()
             }
             className="inline-flex items-center px-8 py-4 bg-[#e30613] text-white font-semibold rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
@@ -307,7 +357,9 @@ const HomePage = () => {
           <p className="text-sm text-gray-500 mt-2">
             {blueprint
               ? "AI will analyze your blueprint and generate recommendations"
-              : "Generate AI-powered tool recommendations and fleet proposal"}
+              : selectedScopes.length > 0
+              ? "Please provide detailed descriptions for all selected scopes"
+              : "Select scopes and provide descriptions, or upload a blueprint"}
           </p>
         </div>
       </div>
